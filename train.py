@@ -73,7 +73,7 @@ if __name__ == "__main__":
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=416, help="size of each image dimension")
+    parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=2, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
@@ -141,6 +141,26 @@ if __name__ == "__main__":
         model.train()
         start_time = time.time()
         for batch_i, (_, imgs, targets) in enumerate(dataloader):
+            # plt.imshow(imgs[0,0,:,:],aspect='auto')
+            
+            # if targets is not None:
+            #      # Rescale boxes to original image
+            #      targets = rescale_boxes(targets, opt.img_size, img.shape[:2])
+            #      unique_labels = targets[:, -1].cpu().unique()
+            #      n_cls_preds = len(unique_labels)
+            #      bbox_colors = random.sample(colors, n_cls_preds)
+            #      for x1, y1, x2, y2, conf, cls_conf, cls_pred in targets:
+            #             print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
+        
+            #             box_w = x2 - x1
+            #             box_h = y2 - y1
+        
+            #             color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+            #             # Create a Rectangle patch
+            #             bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+            #             # Add the bbox to the plot
+            #             ax.add_patch(bbox)
+                     
             batches_done = len(dataloader) * epoch + batch_i
 
             if len(imgs) == opt.batch_size:
@@ -162,38 +182,38 @@ if __name__ == "__main__":
             #   Log progress
             # ----------------
 
-            # log_str = "\n---- [Epoch %d/%d, Batch %d/%d] ----\n" % (epoch, opt.epochs, batch_i, len(dataloader))
+            log_str = "\n---- [Epoch %d/%d, Batch %d/%d] ----\n" % (epoch, opt.epochs, batch_i, len(dataloader))
 
-            # metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
+            metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
 
-            # # Log metrics at each YOLO layer
-            # for i, metric in enumerate(metrics):
-            #     formats = {m: "%.6f" for m in metrics}
-            #     formats["grid_size"] = "%2d"
-            #     formats["cls_acc"] = "%.2f%%"
-            #     row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
-            #     metric_table += [[metric, *row_metrics]]
+            # Log metrics at each YOLO layer
+            for i, metric in enumerate(metrics):
+                formats = {m: "%.6f" for m in metrics}
+                formats["grid_size"] = "%2d"
+                formats["cls_acc"] = "%.2f%%"
+                row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
+                metric_table += [[metric, *row_metrics]]
 
-            #     # Tensorboard logging
-            #     tensorboard_log = []
-            #     for j, yolo in enumerate(model.yolo_layers):
-            #         for name, metric in yolo.metrics.items():
-            #             if name != "grid_size":
-            #                 tensorboard_log += [(f"{name}_{j+1}", metric)]
-            #     tensorboard_log += [("loss", loss.item())]
-            #     logger.list_of_scalars_summary(tensorboard_log, batches_done)
+                # Tensorboard logging
+                tensorboard_log = []
+                for j, yolo in enumerate(model.yolo_layers):
+                    for name, metric in yolo.metrics.items():
+                        if name != "grid_size":
+                            tensorboard_log += [(f"{name}_{j+1}", metric)]
+                tensorboard_log += [("loss", loss.item())]
+                logger.list_of_scalars_summary(tensorboard_log, batches_done)
 
-            # log_str += AsciiTable(metric_table).table
-            # log_str += f"\nTotal loss {loss.item()}"
+            log_str += AsciiTable(metric_table).table
+            log_str += f"\nTotal loss {loss.item()}"
 
-            # # Determine approximate time left for epoch
-            # epoch_batches_left = len(dataloader) - (batch_i + 1)
-            # time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - start_time) / (batch_i + 1))
-            # log_str += f"\n---- ETA {time_left}"
+            # Determine approximate time left for epoch
+            epoch_batches_left = len(dataloader) - (batch_i + 1)
+            time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - start_time) / (batch_i + 1))
+            log_str += f"\n---- ETA {time_left}"
 
-            # print(log_str)
+            print(log_str)
 
-            # model.seen += imgs.size(0)
+            model.seen += imgs.size(0)
 
         if False:#epoch % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")

@@ -1,5 +1,5 @@
 from __future__ import division
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_8.pth --class_path data/custom/classesNSM.names')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_10.pth --class_path data/custom/classesNSM.names')
 from models import *
 from utils.utils import *
 from utils.datasetsNSMTest import *
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=500, help="size of each image dimension")
+    parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
     parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
     opt = parser.parse_args()
     print(opt)
@@ -78,6 +78,7 @@ if __name__ == "__main__":
    # for batch_i, (img_paths, input_imgs) in enumerate(dataloader):
     for batch_i, (_, imgs, targets) in enumerate(dataloader):
         input_imgs = imgs
+        print(targets)
         # Configure input
         try:
             input_imgs = Variable(input_imgs.type(Tensor))
@@ -118,6 +119,7 @@ if __name__ == "__main__":
              unique_labels = detections[:, -1].cpu().unique()
              n_cls_preds = len(unique_labels)
              bbox_colors = random.sample(colors, n_cls_preds)
+             print(detections)
              for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
                  try:
                      print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))

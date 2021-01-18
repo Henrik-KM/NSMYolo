@@ -25,7 +25,7 @@ import torchvision.transforms as transforms
 unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 print_labels = False
 
-def ConvertTrajToBoundingBoxes(im,length=512,times=128,treshold=0.5):
+def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
     debug=False
     # Each label has 5 components - image type,x1,x2,y1,y2
     #Labels are ordered as follows: LabelID X_CENTER_NORM Y_CENTER_NORM WIDTH_NORM HEIGHT_NORM, where 
@@ -72,7 +72,7 @@ def ConvertTrajToBoundingBoxes(im,length=512,times=128,treshold=0.5):
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),1,3)
+nump = lambda: np.clip(np.random.randint(5),0,3)
 
 
 # Particle params
@@ -234,12 +234,12 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=416, augment=False, multiscale=False, normalized_labels=True,totalData=10):
+    def __init__(self, list_path, img_size=256, augment=False, multiscale=False, normalized_labels=True,totalData=10):
         self.img_files = ""
 
         self.label_files = ""
         self.img_size = img_size
-        self.max_objects = 100
+        self.max_objects = 5
         self.augment = augment
         self.multiscale = multiscale
         self.normalized_labels = normalized_labels
@@ -260,8 +260,8 @@ class ListDataset(Dataset):
         st = lambda: 0.04 + 0.01*np.random.rand()
         
     
-        length = 128
-        times = 128
+        length = 256
+        times = 256
         
         batchsize = 1 
         dA = lambda: 0.00006 * (0.7 + np.random.rand())
