@@ -33,7 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
+    parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
     parser.add_argument("--checkpoint_model", type=str, help="path to checkpoint model")
     opt = parser.parse_args()
     print(opt)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt", augment=True, totalData = 2)
+    dataset = ListDataset("data/custom/train.txt", augment=True, totalData = 3)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,

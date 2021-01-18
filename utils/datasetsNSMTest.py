@@ -22,7 +22,7 @@ session = tf.compat.v1.Session(config=config)
 from utils.augmentations import horisontal_flip
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+#unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 print_labels = False
 
 def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
@@ -39,7 +39,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
     try:            
             nump = im.shape[-1]-2
             batchSize = im.shape[0]
-            YOLOLabels = np.zeros((batchSize,nump,5))
+            YOLOLabels = np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
             for j in range(0,batchSize):
                 for k in range(0,nump):
                     particle_img = im[j,:,:,2+k]
@@ -72,7 +72,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),0,3)
+nump = lambda: np.clip(np.random.randint(5),1,3)
 
 
 # Particle params
@@ -234,7 +234,7 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=256, augment=False, multiscale=False, normalized_labels=True,totalData=10):
+    def __init__(self, list_path, img_size=128, augment=False, multiscale=False, normalized_labels=True,totalData=10,unet=None):
         self.img_files = ""
 
         self.label_files = ""
@@ -247,6 +247,7 @@ class ListDataset(Dataset):
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
         self.totalData = totalData
+        self.unet = unet
 
     def __getitem__(self, index):
 
@@ -260,8 +261,8 @@ class ListDataset(Dataset):
         st = lambda: 0.04 + 0.01*np.random.rand()
         
     
-        length = 256
-        times = 256
+        length = 128
+        times = 128
         
         batchsize = 1 
         dA = lambda: 0.00006 * (0.7 + np.random.rand())
@@ -270,7 +271,7 @@ class ListDataset(Dataset):
 
         im = create_batch(batchsize,times,length,nump)
         
-        v1 = unet.predict(np.expand_dims(im[...,0],axis=-1))
+        v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))
         #plt.imshow(v1[0,:,:,0],aspect='auto')
         YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5)
         
@@ -336,8 +337,9 @@ class ListDataset(Dataset):
         targets = [boxes for boxes in targets if boxes is not None]
         # Add sample index to targets
         for i, boxes in enumerate(targets):
-            boxes[:, 0] = i
+            boxes[:, 0] = i        
         targets = torch.cat(targets, 0)
+        #targets[:,0] = 0 #replace sample index with 0
         self.batch_count += 1
         return paths, imgs, targets
 

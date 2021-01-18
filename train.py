@@ -1,6 +1,6 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/Phd/Biosensing---nanochannel-project/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=2')
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=8 --pretrained_weights weights/yolov3.weights')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=32 --pretrained_weights weights/yolov3_ckpt_8.pth --epochs 9')
 from models import *
 from utils.logger import *
 from utils.utils import *
@@ -22,6 +22,12 @@ from torchvision import datasets
 from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
+
+import tensorflow as tf
+config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+config.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=config)
+unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
@@ -66,15 +72,15 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--epochs", type=int, default=11, help="number of epochs")
+    parser.add_argument("--epochs", type=int, default=23, help="number of epochs")
     parser.add_argument("--batch_size", type=int, default=4, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=256, help="size of each image dimension")
-    parser.add_argument("--checkpoint_interval", type=int, default=2, help="interval between saving model weights")
+    parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
+    parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
@@ -107,7 +113,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 1000)
+    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 3000,unet=unet)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -163,13 +169,18 @@ if __name__ == "__main__":
                      
             batches_done = len(dataloader) * epoch + batch_i
 
-            if len(imgs) == opt.batch_size:
-                imgs = torch.stack(imgs)
-                
-            imgs = Variable(imgs.to(device))
+           # if len(imgs) == opt.batch_size:
+           #     imgs = torch.stack(imgs)
+            try:
+                imgs = Variable(imgs.to(device))
+            except:
+                imgs = torch.stack(imgs) 
+                imgs = Variable(imgs.to(device))
             targets = Variable(targets.to(device), requires_grad=False)
 
-            model=model.float()
+            #model=model.float()
+            #print(targets)
+            #plt.imshow(imgs[0,0,:,:].cpu(),aspect='auto')
             loss, outputs = model(imgs, targets)
             loss.backward()
 
