@@ -14,10 +14,10 @@ import numpy as np
 from PIL import Image
 import torch
 import torch.nn.functional as F
-import tensorflow as tf
-config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-config.gpu_options.allow_growth = True
-session = tf.compat.v1.Session(config=config)
+# import tensorflow as tf
+# config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+# config.gpu_options.allow_growth = True
+# session = tf.compat.v1.Session(config=config)
 
 from utils.augmentations import horisontal_flip
 from torch.utils.data import Dataset
@@ -255,19 +255,11 @@ class ListDataset(Dataset):
         #  Image
         # ---------
         print_labels = False
-        
-        Int = lambda: 1.05e-3*(0.08+0.8*np.random.rand())
-        Ds = lambda: 0.10*np.sqrt((0.05 + 1.0*np.random.rand()))
-        st = lambda: 0.04 + 0.01*np.random.rand()
-        
-    
+            
         length = 128
         times = 128
         
         batchsize = 1 
-        dA = lambda: 0.00006 * (0.7 + np.random.rand())
-        dX = lambda: 0.00006* (0.7 + np.random.rand())
-        bgnoiselev = lambda: 0.0006* (0.7 + np.random.rand())
 
         im = create_batch(batchsize,times,length,nump)
         

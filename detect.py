@@ -22,6 +22,12 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
+import tensorflow as tf
+config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+config.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=config)
+unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--image_folder", type=str, default="data/samples", help="path to dataset")
@@ -29,7 +35,7 @@ if __name__ == "__main__":
     parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
     parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.4, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -56,7 +62,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt", augment=True, totalData = 3)
+    dataset = ListDataset("data/custom/train.txt", augment=True, totalData = 10,unet = unet)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -94,10 +100,14 @@ if __name__ == "__main__":
             detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres) #Remove overlapping bounding boxes - keep only the best one
             if detections[0] is not None:
                 if len(detections[0]) > 1:
+                    print(len(detections[0]) > 1)
+                    print(len(detections[0]))
                     #print("double bbox")
                     #prediction = detections
                     #break
                     detections = remove_traj_overlap(detections, opt.overlap_thres) #Remove images where trajectories are too close together 
+                    #if detections[0][0] is None:
+                    #    detections[0] = None
                     #break
 
     # Bounding-box colors

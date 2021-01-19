@@ -182,7 +182,13 @@ def get_batch_statistics(outputs, targets, iou_threshold):
 
 
 def bbox_wh_iou(wh1, wh2):
+    # print(wh1.shape)
+    # print(wh2.shape)
+    # try:
     wh2 = wh2.t()
+   # except:
+   #     wh2 = wh2.transpose(0,1)
+        
     w1, h1 = wh1[0], wh1[1]
     w2, h2 = wh2[0], wh2[1]
     inter_area = torch.min(w1, w2) * torch.min(h1, h2)
@@ -327,10 +333,14 @@ def remove_traj_overlap(prediction, overlap_thres=0.4):
                output[counter] = prediction[0][0]#torch.cat((output,prediction[0][0]),axis=1)
                prediction[0] = prediction[0][1:]
 
-    if output[0] is not None:
-       output = torch.stack(output)
-            
-    return [output]
+    output =[ o for o in output if o is not None]
+    #if output[0] is not None:
+     #  output = torch.stack(output)
+    try:
+         output =[output[0].reshape(-1,7)]     
+    except:
+        output = [None]
+    return output
 
     # for i in range(len(prediction[0])-1):
     #     for j in range(len(prediction[0])-1):

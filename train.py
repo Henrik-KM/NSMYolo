@@ -33,7 +33,7 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
     model.eval()
 
     # Get dataloader
-    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=100)
+    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=500)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn
     )
@@ -113,7 +113,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 3000,unet=unet)
+    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
