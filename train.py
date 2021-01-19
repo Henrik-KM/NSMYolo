@@ -27,7 +27,7 @@ import tensorflow as tf
 config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
 config.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=config)
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415-TIF210.h5',compile=False)
+unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415-TF210.h5',compile=False)
 
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
