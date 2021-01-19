@@ -24,17 +24,16 @@ from torch.autograd import Variable
 import torch.optim as optim
 
 import tensorflow as tf
-#config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-#config.gpu_options.allow_growth = True
-#session = tf.compat.v1.Session(config=config)
-print("hello")
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+config.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=config)
+unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415-TIF210.h5',compile=False)
 
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
 
     # Get dataloader
-    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=500)
+    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=750)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn
     )
