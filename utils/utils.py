@@ -9,7 +9,7 @@ from torch.autograd import Variable
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
-
+import itertools
 
 def to_cpu(tensor):
     return tensor.detach().cpu()
@@ -274,7 +274,80 @@ def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
 
     return output
 
-def remove_traj_overlap(prediction, overlap_thres=0.4):
+def YOLOLabelSingleParticleToMultiple(YOLOLabels,overlap_thres=0.5,xdim=128,ydim=128):
+        continueFlag=True
+        while continueFlag:
+            continueFlag = False
+            labelCombos = np.array(list(itertools.combinations(YOLOLabels,2)))
+
+            for labelCombo in labelCombos:
+                label1 = labelCombo[0,:]
+                label2 = labelCombo[1,:]
+                overlap = bbox_iou(torch.from_numpy(label1[1:]),torch.from_numpy(label2[1:]), x1y1x2y2=True)
+                
+                if overlap > overlap_thres:
+
+                   newLabel = mergeLabels(label1.reshape(1,5),label2.reshape(1,5),xdim,ydim).reshape(1,5)
+                   #YOLOLabels = np.delete(YOLOLabels,np.where(YOLOLabels==label1)).reshape(-1,5) 
+                  # YOLOLabels = np.delete(YOLOLabels,np.where(YOLOLabels==label2)).reshape(-1,5) 
+                   YOLOLabels =  YOLOLabels[~(label1 == YOLOLabels).all(1)]
+                   YOLOLabels = YOLOLabels[~(label2 == YOLOLabels).all(1)]
+                   YOLOLabels = np.append(YOLOLabels,newLabel,0)
+                   if len(YOLOLabels > 1):
+                       continueFlag = True
+                   else: 
+                       continueFlag = False
+                       break
+                   
+        return YOLOLabels
+            
+def ConvertYOLOLabelsToCoord(YOLOLabels,xdim,ydim):
+    #image,x1,y1,x2,y2
+    coordinates = np.zeros(YOLOLabels.shape)
+    coordinates[:,0] = YOLOLabels[:,0]
+    coordinates[:,1] = (xdim-1)*YOLOLabels[:,1]-(xdim-1)/2*YOLOLabels[:,3]
+    coordinates[:,2] = (ydim-1)*YOLOLabels[:,2]-(ydim-1)/2*YOLOLabels[:,4]
+    coordinates[:,3] = (xdim-1)*YOLOLabels[:,1]+(xdim-1)/2*YOLOLabels[:,3]
+    coordinates[:,4] = (ydim-1)*YOLOLabels[:,2]+(ydim-1)/2*YOLOLabels[:,4]
+    
+    return coordinates
+    
+def ConvertCoordToYOLOLabels(coordinates,xdim,ydim):
+    #image,xc,yc,xw,yw
+    labels = np.zeros(coordinates.shape)
+    labels[:,0] = coordinates[:,0]
+    labels[:,1] = (coordinates[:,1]+coordinates[:,3])/2/(xdim-1)
+    labels[:,2] = (coordinates[:,2]+coordinates[:,4])/2/(ydim-1)
+    labels[:,3] = (coordinates[:,3]-coordinates[:,1])/(xdim-1)
+    labels[:,4] = (coordinates[:,4]-coordinates[:,2])/(ydim-1)
+    
+    return labels
+    
+def mergeLabels(label1,label2,xdim,ydim):
+    coord1 = ConvertYOLOLabelsToCoord(label1,xdim,ydim)
+    coord2 = ConvertYOLOLabelsToCoord(label2,xdim,ydim)
+    
+    try:
+        particleNr = np.max([coord1[0],coord2[0]])
+        x1 = np.min([coord1[1],coord2[1]])
+        y1 = np.min([coord1[2],coord2[2]])
+        x2 = np.max([coord1[3],coord2[3]])
+        y2 = np.max([coord1[4],coord2[4]])
+    except IndexError:
+        coord1 = coord1[0]
+        coord2 = coord2[0]
+        particleNr = coord1[0]+coord2[0]
+        x1 = np.min([coord1[1],coord2[1]])
+        y1 = np.min([coord1[2],coord2[2]])
+        x2 = np.max([coord1[3],coord2[3]])
+        y2 = np.max([coord1[4],coord2[4]])
+    
+    newLabel = np.array([np.min([particleNr+1,2]),x1,y1,x2,y2])
+    newLabel = ConvertCoordToYOLOLabels(newLabel.reshape(1,5),xdim,ydim)
+    return newLabel
+
+
+def remove_traj_overlap(prediction, overlap_thres=0.5):
     """
     Removes detections with lower object confidence score than 'conf_thres' and performs
     Non-Maximum Suppression to further filter detections.

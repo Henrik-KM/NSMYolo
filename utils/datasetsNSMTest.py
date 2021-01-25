@@ -5,6 +5,7 @@ from scipy.signal import convolve
 from scipy.signal import convolve2d
 import skimage.measure
 import pandas as pd
+from utils.utils import *
 
 import glob
 import random
@@ -25,8 +26,10 @@ import torchvision.transforms as transforms
 #unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 print_labels = False
 
-def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
+def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
     debug=False
+    
+    #if train
     # Each label has 5 components - image type,x1,x2,y1,y2
     #Labels are ordered as follows: LabelID X_CENTER_NORM Y_CENTER_NORM WIDTH_NORM HEIGHT_NORM, where 
     #X_CENTER_NORM = X_CENTER_ABS/IMAGE_WIDTH
@@ -50,7 +53,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
                         x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
                         y1,y2 = np.min(particleOccurence[0]),np.max(particleOccurence[0])  
 
-                        YOLOLabels[j,k,:] = 0, np.abs(x2+x1)/2/(length-1), (y2+y1)/2/(times-1),(x2-x1)/(length-1),(y2-y1)/(times-1)         
+                        YOLOLabels[j,k,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)         
 
                         if debug:
                             import matplotlib.patches as pch
@@ -65,8 +68,28 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5):
                             plt.colorbar()
                             print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
 
+
+                if trackMultiParticle:
+                    YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
+                    if debug:
+                        plt.figure()
+                        ax = plt.gca()
+                        plt.imshow(im[0,:,:,0],aspect='auto')
+                        YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
+                        for p,x1,y1,x2,y2 in YOLOCoords:
+                            if p ==0:
+                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                            elif p == 1:
+                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
+                            elif p==2:
+                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
+                        
+
+
     except:
            print("Label generation failed. Continuing..")
+
+
 
     
 
@@ -234,12 +257,12 @@ class ImageFolder(Dataset):
 
 
 class ListDataset(Dataset):
-    def __init__(self, list_path, img_size=128, augment=False, multiscale=False, normalized_labels=True,totalData=10,unet=None):
+    def __init__(self, list_path, img_size=128, augment=False, multiscale=False, normalized_labels=True,totalData=10,unet=None,trackMultiParticle=False):
         self.img_files = ""
 
         self.label_files = ""
         self.img_size = img_size
-        self.max_objects = 5
+        self.max_objects = 1000
         self.augment = augment
         self.multiscale = multiscale
         self.normalized_labels = normalized_labels
@@ -248,6 +271,7 @@ class ListDataset(Dataset):
         self.batch_count = 0
         self.totalData = totalData
         self.unet = unet
+        self.trackMultiParticle = trackMultiParticle
 
     def __getitem__(self, index):
 
@@ -256,16 +280,18 @@ class ListDataset(Dataset):
         # ---------
         print_labels = False
             
-        length = 128
-        times = 128
+        length = 256
+        times = 256 #normal images are 128 x10000
         
         batchsize = 1 
 
         im = create_batch(batchsize,times,length,nump)
+        #plt.figure("realIm")
+        #plt.imshow(im[0,:,:,0],aspect='auto')
         
         v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))
         #plt.imshow(v1[0,:,:,0],aspect='auto')
-        YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5)
+        YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08

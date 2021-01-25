@@ -1,5 +1,6 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_10.pth --class_path data/custom/classesNSM.names')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_30.pth --class_path data/custom/classesNSMMulti.names')
 from models import *
 from utils.utils import *
 from utils.datasetsNSMTest import *
@@ -27,6 +28,8 @@ config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
 config.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=config)
 unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+
+trackMultiParticle = False
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -62,7 +65,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt", augment=True, totalData = 10,unet = unet)
+    dataset = ListDataset("data/custom/train.txt", augment=False, totalData = 5,unet = unet,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -95,13 +98,11 @@ if __name__ == "__main__":
         # Get detections
         with torch.no_grad():
             detections = model(input_imgs) #Predict bounding boxes
-            print(detections)
+           # print(detections)
             test = detections
             detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres) #Remove overlapping bounding boxes - keep only the best one
             if detections[0] is not None:
-                if len(detections[0]) > 1:
-                    print(len(detections[0]) > 1)
-                    print(len(detections[0]))
+                if len(detections[0]) > 1 and not trackMultiParticle and False:
                     #print("double bbox")
                     #prediction = detections
                     #break
@@ -113,19 +114,21 @@ if __name__ == "__main__":
     # Bounding-box colors
         cmap = plt.get_cmap("tab20b")
         colors = [cmap(i) for i in np.linspace(0, 1, 20)]
-        print(input_imgs.shape)
-        
+               
         img = input_imgs[0,0,:,:] #Change first index here to allow different batch sizes, make for loop
-        plt.figure()
+       # plt.figure()
         fig, ax = plt.subplots(1)
+        #plt.figure("realIm")
+        #ax = plt.gca()
         ax.imshow(img.cpu(),aspect='auto')
         #ax.set_xlim(192,320)
         detections = detections[0]
     
          # Draw bounding boxes and labels of detections
         if detections is not None:
+             print(detections)
              # Rescale boxes to original image
-             detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
+             #detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
              unique_labels = detections[:, -1].cpu().unique()
              n_cls_preds = len(unique_labels)
              bbox_colors = random.sample(colors, n_cls_preds)
@@ -136,11 +139,19 @@ if __name__ == "__main__":
      
                      box_w = x2 - x1
                      box_h = y2 - y1
-     
+                     # if x1+x2+y1+y2 < 10: #Something has gone wrong with labeling, quick fix..
+                     #     x1 = x1*128
+                     #     y1 = y1*128
+                     #     box_w = box_w*128
+                     #     box_h = box_h*128
+                         
+
                      color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
                      # Create a Rectangle patch
                      bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
+                     plt.text(x1,y1,(classes[int(cls_pred)]),color = color,fontsize=18)
                      # Add the bbox to the plot
+                     print(str(x1) + " " + str(y1) + " " + str(box_w) + " "+str(box_h))
                      ax.add_patch(bbox)
                  except: 
                          print("Flawed detection bbox")

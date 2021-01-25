@@ -25,3 +25,5 @@ data/custom/images/buffalo
 data/custom/images/rhino
 data/custom/images/elephant
 data/custom/images/zebra
+*.npy
+*.png

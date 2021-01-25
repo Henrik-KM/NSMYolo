@@ -1,6 +1,7 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/Phd/Biosensing---nanochannel-project/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=2')
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=32 --pretrained_weights weights/yolov3_ckpt_8.pth --epochs 9')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_ckpt_19.pth --epochs 29')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_Multi_ckpt_30.pth --epochs 29')
 from models import *
 from utils.logger import *
 from utils.utils import *
@@ -27,13 +28,14 @@ import tensorflow as tf
 config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
 config.gpu_options.allow_growth = True
 session = tf.compat.v1.Session(config=config)
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415-TF210.h5',compile=False)
+unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 
+trackMultiParticle = False
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
 
     # Get dataloader
-    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=750)
+    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=100)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn
     )
@@ -73,12 +75,10 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=23, help="number of epochs")
-    parser.add_argument("--batch_size", type=int, default=4, help="size of each image batch")
+    parser.add_argument("--batch_size", type=int, default=32, help="size of each image batch")
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
-    parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
-    parser.add_argument("--data_config", type=str, default="config/coco.data", help="path to data config file")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
-    parser.add_argument("--n_cpu", type=int, default=8, help="number of cpu threads to use during batch generation")
+    parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
     parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
@@ -96,13 +96,20 @@ if __name__ == "__main__":
     os.makedirs("checkpoints", exist_ok=True)
 
     # Get data configuration
-    data_config = parse_data_config(opt.data_config)
+    data_config = "config/customNSM.data"
+    if trackMultiParticle:
+        data_config = "config/customNSMMulti.data"
+    data_config = parse_data_config(data_config)
+    
     train_path = data_config["train"]
     valid_path = data_config["valid"]
     class_names = load_classes(data_config["names"])
 
     # Initiate model
-    model = Darknet(opt.model_def).to(device)
+    model_def = "config/yolov3-customNSM.cfg"
+    if trackMultiParticle:
+        model_def = "config/yolov3-customNSMMulti.cfg"
+    model = Darknet(model_def).to(device)
     model.apply(weights_init_normal)
 
     # If specified we start from checkpoint
@@ -113,7 +120,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet)
+    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -147,30 +154,9 @@ if __name__ == "__main__":
         model.train()
         start_time = time.time()
         for batch_i, (_, imgs, targets) in enumerate(dataloader):
-            # plt.imshow(imgs[0,0,:,:],aspect='auto')
-            
-            # if targets is not None:
-            #      # Rescale boxes to original image
-            #      targets = rescale_boxes(targets, opt.img_size, img.shape[:2])
-            #      unique_labels = targets[:, -1].cpu().unique()
-            #      n_cls_preds = len(unique_labels)
-            #      bbox_colors = random.sample(colors, n_cls_preds)
-            #      for x1, y1, x2, y2, conf, cls_conf, cls_pred in targets:
-            #             print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
-        
-            #             box_w = x2 - x1
-            #             box_h = y2 - y1
-        
-            #             color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
-            #             # Create a Rectangle patch
-            #             bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
-            #             # Add the bbox to the plot
-            #             ax.add_patch(bbox)
-                     
+
             batches_done = len(dataloader) * epoch + batch_i
 
-           # if len(imgs) == opt.batch_size:
-           #     imgs = torch.stack(imgs)
             try:
                 imgs = Variable(imgs.to(device))
             except:
@@ -254,4 +240,7 @@ if __name__ == "__main__":
             print(f"---- mAP {AP.mean()}")
 
         if epoch % opt.checkpoint_interval == 0:
-            torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d.pth" % epoch)
+            if trackMultiParticle:
+                torch.save(model.state_dict(), f"weights/yolov3_Multi_ckpt_%d.pth" % epoch)
+            else:
+                torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d.pth" % epoch)
