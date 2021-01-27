@@ -127,7 +127,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         s = st()
         
         # Generate trajectory 
-        x0=0
+        x0=-0.5+np.random.rand()
         x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         
@@ -262,7 +262,7 @@ class ListDataset(Dataset):
 
         self.label_files = ""
         self.img_size = img_size
-        self.max_objects = 1000
+        self.max_objects = 100
         self.augment = augment
         self.multiscale = multiscale
         self.normalized_labels = normalized_labels
@@ -279,17 +279,30 @@ class ListDataset(Dataset):
         #  Image
         # ---------
         print_labels = False
-            
-        length = 256
-        times = 256 #normal images are 128 x10000
+                 
+        length = self.img_size
+        times = self.img_size #normal images are 600 x10000
+        
+        if self.img_size >1024:   
+            length = 600
+        
         
         batchsize = 1 
 
         im = create_batch(batchsize,times,length,nump)
+        
+        if length != times: #If images not square, downsample and pad
+            im = skimage.measure.block_reduce(im,(1,1,4,1))
+            im = im[:,:,11:139,:]
+            padVal = int((times-length)/2)
+            im = np.pad(im,((0,0),(0,0),(padVal,padVal),(0,0)))
         #plt.figure("realIm")
         #plt.imshow(im[0,:,:,0],aspect='auto')
-        
-        v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))
+        try:
+            v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))
+        except:
+           # print("Failed to predict")
+            v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
         YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         

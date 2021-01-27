@@ -1,7 +1,7 @@
 from __future__ import division
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/Phd/Biosensing---nanochannel-project/NSMYOLO/train.py',args='--data_config config/customNSM.data --model_def config/yolov3-customNSM.cfg --n_cpu 0 --batch_size=2')
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_ckpt_19.pth --epochs 29')
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_Multi_ckpt_30.pth --epochs 29')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=1 --epochs 35')
 from models import *
 from utils.logger import *
 from utils.utils import *
@@ -24,13 +24,14 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
-import tensorflow as tf
-config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-config.gpu_options.allow_growth = True
-session = tf.compat.v1.Session(config=config)
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
-
+# import tensorflow as tf
+# config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+# config.gpu_options.allow_growth = True
+# session = tf.compat.v1.Session(config=config)
+# unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+unet = None
 trackMultiParticle = False
+log_progress = False
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
 
@@ -79,15 +80,15 @@ if __name__ == "__main__":
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
-    parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
+    parser.add_argument("--img_size", type=int, default=2048, help="size of each image dimension")
+    parser.add_argument("--checkpoint_interval", type=int, default=2, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
     opt = parser.parse_args()
     print(opt)
 
-    logger = Logger("logs")
+    logger = None#Logger("logs")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #device = "cpu"
@@ -99,6 +100,7 @@ if __name__ == "__main__":
     data_config = "config/customNSM.data"
     if trackMultiParticle:
         data_config = "config/customNSMMulti.data"
+
     data_config = parse_data_config(data_config)
     
     train_path = data_config["train"]
@@ -109,6 +111,8 @@ if __name__ == "__main__":
     model_def = "config/yolov3-customNSM.cfg"
     if trackMultiParticle:
         model_def = "config/yolov3-customNSMMulti.cfg"
+    if opt.img_size>= 512 and opt.img_size < 1024:
+        model_def =  "config/yolov3-customNSMtiny.cfg"
     model = Darknet(model_def).to(device)
     model.apply(weights_init_normal)
 
@@ -120,13 +124,13 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet,trackMultiParticle=trackMultiParticle)
+    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 1000,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
         shuffle=True,
         num_workers=opt.n_cpu,
-        pin_memory=True,
+        pin_memory=False,
         collate_fn=dataset.collate_fn,
     )
 
@@ -178,39 +182,41 @@ if __name__ == "__main__":
             # ----------------
             #   Log progress
             # ----------------
+            
+            if log_progress:
 
-            log_str = "\n---- [Epoch %d/%d, Batch %d/%d] ----\n" % (epoch, opt.epochs, batch_i, len(dataloader))
-
-            metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
-
-            # Log metrics at each YOLO layer
-            for i, metric in enumerate(metrics):
-                formats = {m: "%.6f" for m in metrics}
-                formats["grid_size"] = "%2d"
-                formats["cls_acc"] = "%.2f%%"
-                row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
-                metric_table += [[metric, *row_metrics]]
-
-                # Tensorboard logging
-                tensorboard_log = []
-                for j, yolo in enumerate(model.yolo_layers):
-                    for name, metric in yolo.metrics.items():
-                        if name != "grid_size":
-                            tensorboard_log += [(f"{name}_{j+1}", metric)]
-                tensorboard_log += [("loss", loss.item())]
-                logger.list_of_scalars_summary(tensorboard_log, batches_done)
-
-            log_str += AsciiTable(metric_table).table
-            log_str += f"\nTotal loss {loss.item()}"
-
-            # Determine approximate time left for epoch
-            epoch_batches_left = len(dataloader) - (batch_i + 1)
-            time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - start_time) / (batch_i + 1))
-            log_str += f"\n---- ETA {time_left}"
-
-            print(log_str)
-
-            model.seen += imgs.size(0)
+                log_str = "\n---- [Epoch %d/%d, Batch %d/%d] ----\n" % (epoch, opt.epochs, batch_i, len(dataloader))
+    
+                metric_table = [["Metrics", *[f"YOLO Layer {i}" for i in range(len(model.yolo_layers))]]]
+    
+                # Log metrics at each YOLO layer
+                for i, metric in enumerate(metrics):
+                    formats = {m: "%.6f" for m in metrics}
+                    formats["grid_size"] = "%2d"
+                    formats["cls_acc"] = "%.2f%%"
+                    row_metrics = [formats[metric] % yolo.metrics.get(metric, 0) for yolo in model.yolo_layers]
+                    metric_table += [[metric, *row_metrics]]
+    
+                    # Tensorboard logging
+                    tensorboard_log = []
+                    for j, yolo in enumerate(model.yolo_layers):
+                        for name, metric in yolo.metrics.items():
+                            if name != "grid_size":
+                                tensorboard_log += [(f"{name}_{j+1}", metric)]
+                    tensorboard_log += [("loss", loss.item())]
+                    logger.list_of_scalars_summary(tensorboard_log, batches_done)
+    
+                log_str += AsciiTable(metric_table).table
+                log_str += f"\nTotal loss {loss.item()}"
+    
+                # Determine approximate time left for epoch
+                epoch_batches_left = len(dataloader) - (batch_i + 1)
+                time_left = datetime.timedelta(seconds=epoch_batches_left * (time.time() - start_time) / (batch_i + 1))
+                log_str += f"\n---- ETA {time_left}"
+    
+                print(log_str)
+    
+                model.seen += imgs.size(0)
 
         if False:#epoch % opt.evaluation_interval == 0:
             print("\n---- Evaluating Model ----")
@@ -242,5 +248,9 @@ if __name__ == "__main__":
         if epoch % opt.checkpoint_interval == 0:
             if trackMultiParticle:
                 torch.save(model.state_dict(), f"weights/yolov3_Multi_ckpt_%d.pth" % epoch)
+            elif opt.img_size>= 512 and opt.img_size < 1024:
+                torch.save(model.state_dict(), f"weights/yolov3_tiny_ckpt_%d.pth" % epoch)    
+            elif  opt.img_size >= 1024:
+                torch.save(model.state_dict(), f"weights/yolov3_ckpt_Nopred_%d.pth" % epoch)
             else:
                 torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d.pth" % epoch)
