@@ -35,55 +35,56 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
     
 
     
-    try:            
-            nump = im.shape[-1]-2
-            batchSize = im.shape[0]
-            YOLOLabels = np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
-            for j in range(0,batchSize):
-                for k in range(0,nump):
-                    particle_img = im[j,:,:,2+k]
-                    particleOccurence = np.where(particle_img>treshold)
-                    if np.sum(particleOccurence) <= 0:
-                        YOLOLabels = np.delete(YOLOLabels,[j,k],1)
-                    else:
-                        x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
-                        y1,y2 = np.min(particleOccurence[0]),np.max(particleOccurence[0])  
+    # try:            
+    nump = im.shape[-1]-2
+    batchSize = im.shape[0]
+    YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5)) #np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
+    for j in range(0,batchSize):
+        for k in range(0,nump):
+            particle_img = im[j,:,:,2+k]
+            particleOccurence = np.where(particle_img>treshold)
+            if np.sum(particleOccurence) <= 0:
+                pass
+                #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
+            else:
+                x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
+                y1,y2 = np.min(particleOccurence[0]),np.max(particleOccurence[0])  
 
-                        YOLOLabels[j,k,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)         
+                YOLOLabels[j,k,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)         
 
-                        if debug:
-                            import matplotlib.patches as pch
-                            max_nbr_particles = 5
-                            nbr_particles = max_nbr_particles
-                            plt.figure()#,figsize=(10,2))
-                            ax = plt.gca()
-                            plt.imshow(particle_img,aspect='auto')
-                            ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
-                            plt.imshow(particle_img,aspect='auto')
-                            print(YOLOLabels)
-                            plt.colorbar()
-                            print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
-
-
-                if trackMultiParticle:
-                    YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
-                    if debug:
-                        plt.figure()
-                        ax = plt.gca()
-                        plt.imshow(im[0,:,:,0],aspect='auto')
-                        YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
-                        for p,x1,y1,x2,y2 in YOLOCoords:
-                            if p ==0:
-                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
-                            elif p == 1:
-                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
-                            elif p==2:
-                                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
-                        
+                if debug:
+                    import matplotlib.patches as pch
+                    max_nbr_particles = 5
+                    nbr_particles = max_nbr_particles
+                    plt.figure()#,figsize=(10,2))
+                    ax = plt.gca()
+                    plt.imshow(particle_img,aspect='auto')
+                    ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                    plt.imshow(particle_img,aspect='auto')
+                    print(YOLOLabels)
+                    plt.colorbar()
+                    print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
 
 
-    except:
-           print("Label generation failed. Continuing..")
+        if trackMultiParticle:
+            YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
+            if debug:
+                plt.figure()
+                ax = plt.gca()
+                plt.imshow(im[0,:,:,0],aspect='auto')
+                YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
+                for p,x1,y1,x2,y2 in YOLOCoords:
+                    if p ==0:
+                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                    elif p == 1:
+                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
+                    elif p==2:
+                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
+                
+
+
+    # except:
+    #        print("Label generation failed. Continuing..")
 
 
 
@@ -91,7 +92,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),1,3)
+nump = lambda: np.clip(np.random.randint(5),0,3)
 
 
 # Particle params
@@ -123,7 +124,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         s = st()
         
         # Generate trajectory 
-        x0=-1+2*np.random.rand()
+        x0=(-1+2*np.random.rand())/2
         x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         
@@ -282,12 +283,15 @@ class ListDataset(Dataset):
         if self.unet==None:   
             length = 600
             im = create_batch(batchsize,times,length,nump)
+            length = self.img_size
         else:
             length = 8192
             times = 128
             im = create_batch(batchsize,times,length,nump)
+            im = skimage.measure.block_reduce(im,(1,1,64,1))
+            length = 128
             
-        length = self.img_size
+        
         
         
 
@@ -309,9 +313,8 @@ class ListDataset(Dataset):
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
        # print(im.shape)
-        
         YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
-        im = skimage.measure.block_reduce(im,(1,1,64,1))
+        
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08
         # Range on Is: 5e-3 = good contrast
@@ -322,8 +325,6 @@ class ListDataset(Dataset):
         # v1 = np.sum(v1,1).T
         # Extract image as PyTorch tensor
         v1 = np.squeeze(v1,0)
-        if self.unet != None:
-            v1 = skimage.measure.block_reduce(v1,(1,64,1))
         img = transforms.ToTensor()(v1)
        #img = torch.from_numpy(v1)
         img = torch.cat([img]*3)
@@ -344,26 +345,30 @@ class ListDataset(Dataset):
         #  Label
         # ---------
 
-        targets = None       
-        boxes = torch.from_numpy(YOLOLabels).reshape(-1,5)#torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
-        if not self.normalized_labels:
-            # Extract coordinates for unpadded + unscaled image
-            x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
-            y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
-            x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
-            y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
-            # Adjust for added padding
-            x1 += pad[0]
-            y1 += pad[2]
-            x2 += pad[1]
-            y2 += pad[3]
-            # Returns (x, y, w, h)
-            boxes[:, 1] = ((x1 + x2) / 2) / padded_w
-            boxes[:, 2] = ((y1 + y2) / 2) / padded_h
-            boxes[:, 3] *= w_factor / padded_w
-            boxes[:, 4] *= h_factor / padded_h
-        targets = torch.zeros((len(boxes), 6))
-        targets[:, 1:] = boxes
+        targets = None   
+        YOLOLabels = np.array(YOLOLabels,dtype=float)
+        
+        if not np.isnan(YOLOLabels).any():#not any(val is None for val in YOLOLabels) and not any(val is np.nan for val in YOLOLabels):#np.isnan(YOLOLabels).any():
+           # YOLOLabels = np.array(YOLOLabels,dtype=float)
+            boxes = torch.from_numpy(YOLOLabels).reshape(-1,5)#torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
+            if not self.normalized_labels:
+                # Extract coordinates for unpadded + unscaled image
+                x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
+                y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
+                x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
+                y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
+                # Adjust for added padding
+                x1 += pad[0]
+                y1 += pad[2]
+                x2 += pad[1]
+                y2 += pad[3]
+                # Returns (x, y, w, h)
+                boxes[:, 1] = ((x1 + x2) / 2) / padded_w
+                boxes[:, 2] = ((y1 + y2) / 2) / padded_h
+                boxes[:, 3] *= w_factor / padded_w
+                boxes[:, 4] *= h_factor / padded_h
+            targets = torch.zeros((len(boxes), 6))
+            targets[:, 1:] = boxes
         
         #print(img.shape)
        # plt.figure()

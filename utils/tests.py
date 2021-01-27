@@ -250,7 +250,7 @@ import os
 from torch.autograd import Variable
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+im = create_batch(1,128,128,lambda:2)
 pred = np.expand_dims(im[:,:,:,1],-1)
 
 plt.figure()
@@ -266,20 +266,21 @@ plt.xlabel('t')
 
 classes = load_classes("data/custom/classesNSM.names")
 Tensor = torch.cuda.FloatTensor
-predDS = skimage.measure.block_reduce(pred,(1,8,8,1)) 
+predDS = skimage.measure.block_reduce(pred,(1,1,1,1)) 
 predDS = Variable(torch.from_numpy(predDS).type(Tensor), requires_grad=False)
-model = Darknet("config/yolov3-customNSM.cfg", img_size=256).to(device)
-model = model.load_state_dict(torch.load("weights/yolov3_ckpt_28.pth"))
+model = Darknet("config/yolov3-customNSM.cfg", img_size=128).to(device)
+weights_path = "weights/yolov3_ckpt_28.pth"
+model.load_state_dict(torch.load(weights_path))#,map_location=torch.device('cpu')))
 model.eval()
 
 predDS = torch.unsqueeze(predDS[...,0],1)
 detections = model(torch.cat([predDS]*3,1))
-detections = non_max_suppression(detections,conf_thres=0.9,nms_thres=0.4)
+detections = non_max_suppression(detections,conf_thres=0.8,nms_thres=0.4)
 detections=detections[0]
 cmap = plt.get_cmap("tab20b")
 colors = [cmap(i) for i in np.linspace(0, 1, 20)]
 if detections is not None:
-     detections = rescale_boxes(detections, 256, pred.shape[:2])
+     #detections = rescale_boxes(detections, 256, pred.shape[:2])
      unique_labels = detections[:, -1].cpu().unique()
      n_cls_preds = len(unique_labels)
      bbox_colors = random.sample(colors, n_cls_preds)

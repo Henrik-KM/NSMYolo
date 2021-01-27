@@ -10,6 +10,8 @@ from utils.parse_config import *
 
 
 from terminaltables import AsciiTable
+import warnings
+warnings.filterwarnings("ignore",category=Warning)
 
 import os
 import sys
@@ -26,7 +28,7 @@ import torch.optim as optim
 
 trackMultiParticle = False
 log_progress = True
-train_unet = True
+train_unet = False
 unet = None
 
 if train_unet:
@@ -41,7 +43,7 @@ def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size
     model.eval()
 
     # Get dataloader
-    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=100)
+    dataset = ListDataset(path, img_size=img_size, augment=False, multiscale=False,totalData=1000)
     dataloader = torch.utils.data.DataLoader(
         dataset, batch_size=batch_size, shuffle=False, num_workers=1, collate_fn=dataset.collate_fn
     )
@@ -177,7 +179,7 @@ if __name__ == "__main__":
             #model=model.float()
             #print(targets)
             #plt.imshow(imgs[0,0,:,:].cpu(),aspect='auto')
-            loss, outputs = model(imgs, targets)
+            loss, outputs = model(imgs, targets)    
             loss.backward()
 
             if batches_done % opt.gradient_accumulations:
