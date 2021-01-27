@@ -280,22 +280,26 @@ class ListDataset(Dataset):
         # ---------
         print_labels = False
                  
-        length = self.img_size
+        
         times = self.img_size #normal images are 600 x10000
+        length = self.img_size
         
-        #if self.img_size >1024:   
-        #    length = 600
-        
+        if self.img_size >1024:   
+            length = 600
+            im = create_batch(batchsize,times,length,nump)
+            
+        length = self.img_size
         
         batchsize = 1 
 
-        im = create_batch(batchsize,times,length,nump)
+        
+        
        # print(im.shape)
         
         if length != times: #If images not square, downsample and pad
             im = skimage.measure.block_reduce(im,(1,1,4,1))
             im = im[:,:,11:139,:]
-            padVal = int((times-length)/2)
+            padVal = int((times-128)/2)
             im = np.pad(im,((0,0),(0,0),(padVal,padVal),(0,0)))
         #plt.figure("realIm")
         #plt.imshow(im[0,:,:,0],aspect='auto')
