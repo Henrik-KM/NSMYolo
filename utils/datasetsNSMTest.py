@@ -283,8 +283,8 @@ class ListDataset(Dataset):
         length = self.img_size
         times = self.img_size #normal images are 600 x10000
         
-        if self.img_size >1024:   
-            length = 600
+        #if self.img_size >1024:   
+        #    length = 600
         
         
         batchsize = 1 
