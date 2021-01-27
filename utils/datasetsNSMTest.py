@@ -127,7 +127,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         s = st()
         
         # Generate trajectory 
-        x0=0#-0.5+np.abs(np.random.rand())
+        x0=-1+2*np.random.rand()
         x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         
@@ -290,6 +290,7 @@ class ListDataset(Dataset):
         batchsize = 1 
 
         im = create_batch(batchsize,times,length,nump)
+        print(im.shape)
         
         if length != times: #If images not square, downsample and pad
             im = skimage.measure.block_reduce(im,(1,1,4,1))
@@ -304,6 +305,7 @@ class ListDataset(Dataset):
            # print("Failed to predict")
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
+        print(im.shape)
         YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s

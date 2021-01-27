@@ -88,7 +88,7 @@ if __name__ == "__main__":
     opt = parser.parse_args()
     print(opt)
 
-    logger = None#Logger("logs")
+    logger = Logger("logs")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     #device = "cpu"
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     model_def = "config/yolov3-customNSM.cfg"
     if trackMultiParticle:
         model_def = "config/yolov3-customNSMMulti.cfg"
-    if opt.img_size>= 512 and opt.img_size < 1024:
+    if opt.img_size>= 512 and opt.img_size < 1024 and False:
         model_def =  "config/yolov3-customNSMtiny.cfg"
     model = Darknet(model_def).to(device)
     model.apply(weights_init_normal)
