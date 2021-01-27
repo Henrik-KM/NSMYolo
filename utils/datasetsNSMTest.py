@@ -27,7 +27,7 @@ import torchvision.transforms as transforms
 print_labels = False
 
 def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
-    debug=True
+    debug=False
     
     #if train
     # Each label has 5 components - image type,x1,x2,y1,y2
@@ -309,7 +309,7 @@ class ListDataset(Dataset):
            # print("Failed to predict")
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
-        print(im.shape)
+       # print(im.shape)
         YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
