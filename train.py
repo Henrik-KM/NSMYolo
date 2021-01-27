@@ -31,7 +31,7 @@ import torch.optim as optim
 # unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 unet = None
 trackMultiParticle = False
-log_progress = False
+log_progress = True
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
 
