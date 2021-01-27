@@ -15,15 +15,11 @@ import numpy as np
 from PIL import Image
 import torch
 import torch.nn.functional as F
-# import tensorflow as tf
-# config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-# config.gpu_options.allow_growth = True
-# session = tf.compat.v1.Session(config=config)
+
 
 from utils.augmentations import horisontal_flip
 from torch.utils.data import Dataset
 import torchvision.transforms as transforms
-#unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 print_labels = False
 
 def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
@@ -270,7 +266,7 @@ class ListDataset(Dataset):
         self.max_size = self.img_size + 3 * 32
         self.batch_count = 0
         self.totalData = totalData
-        self.unet = unet
+        self.unet = 1#unet
         self.trackMultiParticle = trackMultiParticle
 
     def __getitem__(self, index):
@@ -283,9 +279,12 @@ class ListDataset(Dataset):
         
         times = self.img_size #normal images are 600 x10000
         length = self.img_size
-        
-        if self.img_size >1024:   
+        if self.unet==None:   
             length = 600
+            im = create_batch(batchsize,times,length,nump)
+        else:
+            length = 8192
+            times = 128
             im = create_batch(batchsize,times,length,nump)
             
         length = self.img_size
@@ -296,7 +295,7 @@ class ListDataset(Dataset):
         
        # print(im.shape)
         
-        if self.img_size >1024: #If images not square, downsample and pad
+        if self.unet==None: #If images not square, downsample and pad
             im = skimage.measure.block_reduce(im,(1,1,4,1))
             im = im[:,:,11:139,:]
             padVal = int((times-128)/2)
@@ -304,14 +303,15 @@ class ListDataset(Dataset):
         #plt.figure("realIm")
         #plt.imshow(im[0,:,:,0],aspect='auto')
         try:
-            v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))
+            v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))          
         except:
            # print("Failed to predict")
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
        # print(im.shape)
-        YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         
+        YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
+        im = skimage.measure.block_reduce(im,(1,1,64,1))
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08
         # Range on Is: 5e-3 = good contrast
@@ -322,6 +322,8 @@ class ListDataset(Dataset):
         # v1 = np.sum(v1,1).T
         # Extract image as PyTorch tensor
         v1 = np.squeeze(v1,0)
+        if self.unet != None:
+            v1 = skimage.measure.block_reduce(v1,(1,64,1))
         img = transforms.ToTensor()(v1)
        #img = torch.from_numpy(v1)
         img = torch.cat([img]*3)
@@ -344,21 +346,22 @@ class ListDataset(Dataset):
 
         targets = None       
         boxes = torch.from_numpy(YOLOLabels).reshape(-1,5)#torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
-        # Extract coordinates for unpadded + unscaled image
-        x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
-        y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
-        x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
-        y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
-        # Adjust for added padding
-        x1 += pad[0]
-        y1 += pad[2]
-        x2 += pad[1]
-        y2 += pad[3]
-        # Returns (x, y, w, h)
-        boxes[:, 1] = ((x1 + x2) / 2) / padded_w
-        boxes[:, 2] = ((y1 + y2) / 2) / padded_h
-        boxes[:, 3] *= w_factor / padded_w
-        boxes[:, 4] *= h_factor / padded_h
+        if not self.normalized_labels:
+            # Extract coordinates for unpadded + unscaled image
+            x1 = w_factor * (boxes[:, 1] - boxes[:, 3] / 2)
+            y1 = h_factor * (boxes[:, 2] - boxes[:, 4] / 2)
+            x2 = w_factor * (boxes[:, 1] + boxes[:, 3] / 2)
+            y2 = h_factor * (boxes[:, 2] + boxes[:, 4] / 2)
+            # Adjust for added padding
+            x1 += pad[0]
+            y1 += pad[2]
+            x2 += pad[1]
+            y2 += pad[3]
+            # Returns (x, y, w, h)
+            boxes[:, 1] = ((x1 + x2) / 2) / padded_w
+            boxes[:, 2] = ((y1 + y2) / 2) / padded_h
+            boxes[:, 3] *= w_factor / padded_w
+            boxes[:, 4] *= h_factor / padded_h
         targets = torch.zeros((len(boxes), 6))
         targets[:, 1:] = boxes
         

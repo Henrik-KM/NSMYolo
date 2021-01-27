@@ -145,7 +145,8 @@ times=2048
 length=2048
 im = create_batch(1,times,length,nump)
 
-debug=True
+
+debug=False
 #if train
 # Each label has 5 components - image type,x1,x2,y1,y2
 #Labels are ordered as follows: LabelID X_CENTER_NORM Y_CENTER_NORM WIDTH_NORM HEIGHT_NORM, where 
@@ -213,7 +214,8 @@ import tensorflow as tf
 for i in range(0,2):
     unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
     
-    im = create_batch(1,8192,length,nump)
+    im = create_batch(1,2048,2048,nump)
+    pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
     plt.figure()
     plt.imshow(im[0,:,:,0].T,aspect='auto')
     plt.xlabel('t')
@@ -237,7 +239,63 @@ for i in range(0,2):
     plt.xlabel('t')
     plt.title("Predicted Trajectory")
     plt.xlabel('x')
+    
+#%%
+import tensorflow as tf
+from models import *
+import torch
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+from torch.autograd import Variable
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+pred = np.expand_dims(im[:,:,:,1],-1)
+
+plt.figure()
+plt.imshow(pred[0,:,:,0],aspect='auto')
+plt.xlabel('x')
+plt.title("Processed Image")
+plt.xlabel('t')
+plt.figure()
+plt.imshow(im[0,:,:,0],aspect='auto')
+plt.xlabel('x')
+plt.title("Processed Image")
+plt.xlabel('t')
+
+classes = load_classes("data/custom/classesNSM.names")
+Tensor = torch.cuda.FloatTensor
+predDS = skimage.measure.block_reduce(pred,(1,8,8,1)) 
+predDS = Variable(torch.from_numpy(predDS).type(Tensor), requires_grad=False)
+model = Darknet("config/yolov3-customNSM.cfg", img_size=256).to(device)
+model = model.load_state_dict(torch.load("weights/yolov3_ckpt_28.pth"))
+model.eval()
+
+predDS = torch.unsqueeze(predDS[...,0],1)
+detections = model(torch.cat([predDS]*3,1))
+detections = non_max_suppression(detections,conf_thres=0.9,nms_thres=0.4)
+detections=detections[0]
+cmap = plt.get_cmap("tab20b")
+colors = [cmap(i) for i in np.linspace(0, 1, 20)]
+if detections is not None:
+     detections = rescale_boxes(detections, 256, pred.shape[:2])
+     unique_labels = detections[:, -1].cpu().unique()
+     n_cls_preds = len(unique_labels)
+     bbox_colors = random.sample(colors, n_cls_preds)
+     for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
+        print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
+
+        box_w = x2 - x1
+        box_h = y2 - y1                    
+
+        color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
+        # Create a Rectangle patch
+        bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, zorder=2,edgecolor="black", facecolor="none")
+        plt.text(x1,y1,(classes[int(cls_pred)]),color = color)
+        # Add the bbox to the plot
+        print(str(x1) + " " + str(y1) + " " + str(box_w) + " "+str(box_h))
+        ax.add_patch(bbox)
 #%%
 import tensorflow as tf
 from models import *

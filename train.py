@@ -24,14 +24,19 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
-# import tensorflow as tf
-# config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-# config.gpu_options.allow_growth = True
-# session = tf.compat.v1.Session(config=config)
-# unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
-unet = None
 trackMultiParticle = False
 log_progress = True
+train_unet = True
+unet = None
+
+if train_unet:
+    import tensorflow as tf
+    config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+    config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=config)
+    unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+
+
 def evaluate(model, path, iou_thres, conf_thres, nms_thres, img_size, batch_size):
     model.eval()
 
@@ -80,7 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=2048, help="size of each image dimension")
+    parser.add_argument("--img_size", type=int, default=8192, help="size of each image dimension")
     parser.add_argument("--checkpoint_interval", type=int, default=2, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
@@ -253,5 +258,7 @@ if __name__ == "__main__":
                 torch.save(model.state_dict(), f"weights/yolov3_tiny_ckpt_%d.pth" % epoch)    
             elif  opt.img_size >= 1024:
                 torch.save(model.state_dict(), f"weights/yolov3_ckpt_Nopred_%d.pth" % epoch)
+            elif unet != None and img_size==8192:
+                torch.save(model.state_dict(), f"weights/yolov3_ckpt_HugeDS_%d.pth" % epoch)
             else:
                 torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d.pth" % epoch)
