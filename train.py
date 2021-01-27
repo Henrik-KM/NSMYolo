@@ -115,6 +115,7 @@ if __name__ == "__main__":
         model_def =  "config/yolov3-customNSMtiny.cfg"
     model = Darknet(model_def).to(device)
     model.apply(weights_init_normal)
+    model.cuda()
 
     # If specified we start from checkpoint
     if opt.pretrained_weights:

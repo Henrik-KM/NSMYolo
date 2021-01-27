@@ -289,7 +289,7 @@ class ListDataset(Dataset):
         
         batchsize = 1 
 
-        im = create_batch(batchsize,times,length,nump)
+        im = create_batch(batchsize,times,length,nump).cuda()
         print(im.shape)
         
         if length != times: #If images not square, downsample and pad
