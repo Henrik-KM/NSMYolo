@@ -127,7 +127,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         s = st()
         
         # Generate trajectory 
-        x0=-0.5+np.abs(np.random.rand())
+        x0=0#-0.5+np.abs(np.random.rand())
         x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         
