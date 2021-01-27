@@ -23,12 +23,12 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
-import tensorflow as tf
-config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-config.gpu_options.allow_growth = True
-session = tf.compat.v1.Session(config=config)
-unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
-
+# import tensorflow as tf
+# config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+# config.gpu_options.allow_growth = True
+# session = tf.compat.v1.Session(config=config)
+# unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+unet=None
 trackMultiParticle = False
 
 if __name__ == "__main__":
@@ -65,7 +65,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 10,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 3,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,

@@ -141,8 +141,8 @@ def create_batch(batchsize,times,length,nump):
 
 
 nump = lambda: 3#np.clip(np.random.randint(5),1,3)
-times=512
-length=128
+times=2048
+length=2048
 im = create_batch(1,times,length,nump)
 
 debug=True
