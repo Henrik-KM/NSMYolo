@@ -84,7 +84,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),1,3)
+nump = lambda: np.clip(np.random.randint(5),0,3)
 
 
 # Particle params
@@ -276,12 +276,14 @@ class ListDataset(Dataset):
             length = 600
             im = create_batch(batchsize,times,length,nump)
             length = self.img_size
-        else:
+        elif self.img_size==8192:
             length = 128
             times = 8192
             im = create_batch(batchsize,times,length,nump)
             im = skimage.measure.block_reduce(im,(1,64,1,1))
             times = 128
+        else:
+            im = create_batch(batchsize,times,length,nump)
             
         
         
