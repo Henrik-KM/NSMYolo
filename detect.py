@@ -37,8 +37,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.9, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.1, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -130,7 +130,6 @@ if __name__ == "__main__":
     
          # Draw bounding boxes and labels of detections
         if detections is not None:
-             print(detections)
              # Rescale boxes to original image
              #detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
              unique_labels = detections[:, -1].cpu().unique()
@@ -143,11 +142,6 @@ if __name__ == "__main__":
      
                      box_w = x2 - x1
                      box_h = y2 - y1
-                     # if x1+x2+y1+y2 < 10: #Something has gone wrong with labeling, quick fix..
-                     #     x1 = x1*128
-                     #     y1 = y1*128
-                     #     box_w = box_w*128
-                     #     box_h = box_h*128
                          
 
                      color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
@@ -169,4 +163,7 @@ if __name__ == "__main__":
         # plt.close()
 
 #%%
+
+fig, ax = plt.subplots(1)
+ax.imshow(np.zeros((128,8192)),aspect='auto')
 
