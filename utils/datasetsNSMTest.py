@@ -32,10 +32,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
     #Y_CENTER_NORM = Y_CENTER_ABS/IMAGE_HEIGHT
     #WIDTH_NORM = WIDTH_OF_LABEL_ABS/IMAGE_WIDTH
     #HEIGHT_NORM = HEIGHT_OF_LABEL_ABS/IMAGE_HEIGHT
-    
-
-    
-    # try:            
+           
     nump = im.shape[-1]-2
     batchSize = im.shape[0]
     YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5)) #np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
@@ -56,7 +53,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
                     import matplotlib.patches as pch
                     max_nbr_particles = 5
                     nbr_particles = max_nbr_particles
-                    plt.figure()#,figsize=(10,2))
+                    plt.figure()
                     ax = plt.gca()
                     plt.imshow(particle_img,aspect='auto')
                     ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
@@ -80,11 +77,6 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
                         ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
                     elif p==2:
                         ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
-                
-
-
-    # except:
-    #        print("Label generation failed. Continuing..")
 
 
 
@@ -92,12 +84,12 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),0,3)
+nump = lambda: np.clip(np.random.randint(5),1,3)
 
 
 # Particle params
 Int = lambda : 1e-3*(0.1+0.8*np.random.rand())
-Ds = lambda: 0.10*np.sqrt((0.05 + 1*np.random.rand()))
+Ds = lambda: 0.10*np.sqrt((0.05 + 1*np.random.rand()))#0.10*(0.05 + 1*np.random.rand())#
 st = lambda: 0.04 + 0.01*np.random.rand()
 
 # Noise params
@@ -285,11 +277,11 @@ class ListDataset(Dataset):
             im = create_batch(batchsize,times,length,nump)
             length = self.img_size
         else:
-            length = 8192
-            times = 128
-            im = create_batch(batchsize,times,length,nump)
-            im = skimage.measure.block_reduce(im,(1,1,64,1))
             length = 128
+            times = 8192
+            im = create_batch(batchsize,times,length,nump)
+            im = skimage.measure.block_reduce(im,(1,64,1,1))
+            times = 128
             
         
         

@@ -69,7 +69,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 3,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 5,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -147,7 +147,7 @@ if __name__ == "__main__":
                      color = bbox_colors[int(np.where(unique_labels == int(cls_pred))[0])]
                      # Create a Rectangle patch
                      bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor=color, facecolor="none")
-                     plt.text(x1,y1,(classes[int(cls_pred)]),color = color,fontsize=18)
+                     ax.text(x1,y1,(classes[int(cls_pred)]),color = color,fontsize=18)
                      # Add the bbox to the plot
                      print(str(x1) + " " + str(y1) + " " + str(box_w) + " "+str(box_h))
                      ax.add_patch(bbox)
@@ -164,6 +164,7 @@ if __name__ == "__main__":
 
 #%%
 
-fig, ax = plt.subplots(1)
-ax.imshow(np.zeros((128,8192)),aspect='auto')
+#fig, ax = plt.subplots(1)
+#ax.imshow(np.zeros((128,8192)),aspect='auto')
+#rescale_boxes_custom(detections,128,[128,8192])
 

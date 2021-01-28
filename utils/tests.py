@@ -30,7 +30,7 @@ print_labels = False
 
 # Particle params
 Int = lambda : 1e-3*(0.1+0.8*np.random.rand())#1e-3*(0.1+0.8*np.random.rand())#1e-4#
-Ds = lambda: 0.10*np.sqrt((0.05 + 1*np.random.rand()))#0.02#
+Ds = lambda: 0.10*(0.05 + 1*np.random.rand())#0.10*np.sqrt((0.05 + 1*np.random.rand()))#0.02#
 st = lambda: 0.04 + 0.01*np.random.rand()
 
 # Noise params
@@ -140,11 +140,11 @@ def create_batch(batchsize,times,length,nump):
     return batch
 
 
-nump = lambda: 3#np.clip(np.random.randint(5),1,3)
-times=2048
-length=2048
+nump = lambda:np.clip(np.random.randint(5),1,3)
+times=8192
+length=128
 im = create_batch(1,times,length,nump)
-
+plt.imshow(im[0,:,:,1].T,aspect='auto')
 
 debug=False
 #if train
@@ -157,7 +157,9 @@ debug=False
 
 trackMultiParticle = True
 treshold=0.5
-#try:            
+#try:          
+
+    #%%
 nump = im.shape[-1]-2
 batchSize = im.shape[0]
 YOLOLabels = np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
