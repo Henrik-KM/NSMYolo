@@ -85,8 +85,8 @@ if __name__ == "__main__":
     parser.add_argument("--gradient_accumulations", type=int, default=2, help="number of gradient accums before step")
     parser.add_argument("--pretrained_weights", type=str, help="if specified starts from checkpoint model")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
-    parser.add_argument("--img_size", type=int, default=128, help="size of each image dimension")
-    parser.add_argument("--checkpoint_interval", type=int, default=4, help="interval between saving model weights")
+    parser.add_argument("--img_size", type=int, default=8192, help="size of each image dimension")
+    parser.add_argument("--checkpoint_interval", type=int, default=1, help="interval between saving model weights")
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
@@ -130,7 +130,7 @@ if __name__ == "__main__":
             model.load_darknet_weights(opt.pretrained_weights)
 
     # Get dataloader
-    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 1000,unet=unet,trackMultiParticle=trackMultiParticle)
+    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
