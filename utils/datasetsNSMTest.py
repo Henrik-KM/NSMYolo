@@ -24,7 +24,7 @@ print_labels = False
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
     debug = False
-    YOLOLabels = []
+    YOLOLabels = [None]
     
     nump = im.shape[-1]-2
     batchSize = im.shape[0]
