@@ -22,6 +22,75 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 print_labels = False
 
+def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
+    debug = False
+    YOLOLabels = []
+    
+    nump = im.shape[-1]-2
+    batchSize = im.shape[0]
+    #YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5)) #np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
+    #YOLOLabels = np.reshape([None]*5,(1,1,5))
+    for j in range(0,batchSize):
+        for k in range(0,nump):
+            particle_img = im[j,:,:,2+k]
+            particleOccurence = np.where(particle_img>treshold)
+            if np.sum(particleOccurence) <= 0:
+                pass
+                #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
+            else:
+                trajTreshold = int(times/16)
+                trajectoryOccurence = np.diff(particleOccurence[0])
+                trajectories = particleOccurence[0][np.where(trajectoryOccurence>trajTreshold)]
+                trajectories = np.append(0,trajectories)
+                trajectories = np.append(trajectories,times)
+                
+                for traj in range(0,len(trajectories)-1): 
+                    particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
+                    constant = trajectories[traj]
+                    if traj != 0:
+                        particleOccurence = np.where(particle_img[trajectories[traj]+trajTreshold:trajectories[traj+1],:]>treshold)
+                        constant = trajectories[traj]+trajTreshold
+                
+                    x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
+                    y1,y2 = np.min(particleOccurence[0])+constant,np.max(particleOccurence[0])+constant
+                
+                    try:
+                        YOLOLabels =np.append(YOLOLabels,np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5)),1)
+            
+                    except:
+                        YOLOLabels = np.reshape([None]*5,(1,1,5))
+                        YOLOLabels[0,0,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)   
+                    
+                    if debug and traj == 0:
+                        plt.figure()
+                        ax = plt.gca()
+                        plt.imshow(particle_img,aspect='auto')
+        
+                    if debug:
+                        import matplotlib.patches as pch                  
+                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                        #plt.imshow(particle_img,aspect='auto')
+                        print(YOLOLabels)
+                        print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
+        
+        
+            if trackMultiParticle:
+                YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
+                if debug:
+                    plt.figure()
+                    ax = plt.gca()
+                    plt.imshow(im[0,:,:,0],aspect='auto')
+                    YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
+                    for p,x1,y1,x2,y2 in YOLOCoords:
+                        if p ==0:
+                            ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                        elif p == 1:
+                            ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
+                        elif p==2:
+                            ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
+                            
+    return YOLOLabels
+
 def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
     debug=False
     
@@ -312,7 +381,7 @@ class ListDataset(Dataset):
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
        # print(im.shape)
-        YOLOLabels = ConvertTrajToBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
+        YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
         
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08
