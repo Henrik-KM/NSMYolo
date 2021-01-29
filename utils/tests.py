@@ -370,9 +370,12 @@ for file in files[7:10]:
             ax.add_patch(bbox)
 
 #%%
-treshold=0.2
+treshold=0.5
 
 debug=True
+trackMultiParticle = False
+YOLOLabels = []
+plt.close('all')
 
 nump = im.shape[-1]-2
 batchSize = im.shape[0]
@@ -386,35 +389,39 @@ for j in range(0,batchSize):
             pass
             #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
         else:
-            
+            trajTreshold = int(times/16)
             trajectoryOccurence = np.diff(particleOccurence[0])
-            trajectories = particleOccurence[0][np.where(trajectoryOccurence>times/8)]
-            #trajectories = np.append(0,np.where(trajectoryOccurence>times/8))
-            #trajectories = np.append(trajectories,times)
-            #%%
-            for traj in range(0,len(trajectories)-1): 
+            trajectories = particleOccurence[0][np.where(trajectoryOccurence>trajTreshold)]
+            trajectories = np.append(0,trajectories)
+            trajectories = np.append(trajectories,times)
             
-                x1,x2 = np.min(particleOccurence[1][trajectories[traj]:trajectories[traj+1]]),np.max(particleOccurence[1][trajectories[traj]:trajectories[traj+1]])  
-                y1,y2 = np.min(particleOccurence[0][trajectories[traj]:trajectories[traj+1]]),np.max(particleOccurence[0][trajectories[traj]:trajectories[traj+1]])  
-                
+            for traj in range(0,len(trajectories)-1): 
+                particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
+                constant = trajectories[traj]
+                if traj != 0:
+                    particleOccurence = np.where(particle_img[trajectories[traj]+trajTreshold:trajectories[traj+1],:]>treshold)
+                    constant = trajectories[traj]+trajTreshold
+            
+                x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
+                y1,y2 = np.min(particleOccurence[0])+constant,np.max(particleOccurence[0])+constant
+            
                 try:
-                    YOLOLabels =np.append(YOLOLabels,[0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],2)
+                    YOLOLabels =np.append(YOLOLabels,np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5)),1)
         
                 except:
                     YOLOLabels = np.reshape([None]*5,(1,1,5))
                     YOLOLabels[0,0,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)   
-    
-                if debug:
-                    import matplotlib.patches as pch
-                    max_nbr_particles = 5
-                    nbr_particles = max_nbr_particles
+                
+                if debug and traj == 0:
                     plt.figure()
                     ax = plt.gca()
                     plt.imshow(particle_img,aspect='auto')
+    
+                if debug:
+                    import matplotlib.patches as pch                  
                     ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
-                    plt.imshow(particle_img,aspect='auto')
+                    #plt.imshow(particle_img,aspect='auto')
                     print(YOLOLabels)
-                    plt.colorbar()
                     print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
     
     
