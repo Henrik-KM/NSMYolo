@@ -37,8 +37,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
-    parser.add_argument("--nms_thres", type=float, default=0.5, help="iou thresshold for non-maximum suppression")
+    parser.add_argument("--conf_thres", type=float, default=0.9, help="object confidence threshold")
+    parser.add_argument("--nms_thres", type=float, default=0.6, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
     parser.add_argument("--n_cpu", type=int, default=0, help="number of cpu threads to use during batch generation")
@@ -69,7 +69,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 5,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 3,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -102,8 +102,8 @@ if __name__ == "__main__":
         # Get detections
         with torch.no_grad():
             detections = model(input_imgs) #Predict bounding boxes
-           # print(detections)
-            test = detections
+            #detections[0,:,4] = detections[0,:,4]*2
+            #detections[0,:,5] = detections[0,:,5]*2
             detections = non_max_suppression(detections, opt.conf_thres, opt.nms_thres) #Remove overlapping bounding boxes - keep only the best one
             if detections[0] is not None:
                 if len(detections[0]) > 1 and not trackMultiParticle and False:
@@ -132,6 +132,7 @@ if __name__ == "__main__":
         if detections is not None:
              # Rescale boxes to original image
              #detections = rescale_boxes(detections, opt.img_size, img.shape[:2])
+             #detections = rescale_boxes_custom(detections, 128, img.shape[:2])
              unique_labels = detections[:, -1].cpu().unique()
              n_cls_preds = len(unique_labels)
              bbox_colors = random.sample(colors, n_cls_preds)

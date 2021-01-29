@@ -49,6 +49,8 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
                 YOLOLabels[j,k,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)         
 
+
+
                 if debug:
                     import matplotlib.patches as pch
                     max_nbr_particles = 5

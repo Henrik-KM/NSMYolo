@@ -53,7 +53,6 @@ def rescale_boxes_custom(boxes, current_dim, original_shape):
     """ Rescales bounding boxes to the original shape """
     orig_h, orig_w = original_shape
     # The amount of padding that was addedof original image
-    
     boxes[:, 0] = boxes[:,0]*(orig_w/current_dim)
     boxes[:, 1] = boxes[:,1]*(orig_h/current_dim)
     boxes[:, 2] = boxes[:,2]*(orig_w/current_dim)
