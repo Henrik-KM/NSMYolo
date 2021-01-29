@@ -46,7 +46,7 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                 
                 for traj in range(0,len(trajectories)-1): 
                     particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
-                    if np.sum(particleOccurence) <=0:
+                    if np.sum(particleOccurence[1]) <=0 or np.sum(particleOccurence[0]) <=0:
                         break
                     constant = trajectories[traj]
                     if traj != 0:
