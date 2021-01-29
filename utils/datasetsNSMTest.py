@@ -284,7 +284,7 @@ class ListDataset(Dataset):
             im = create_batch(batchsize,times,length,nump)
             im = skimage.measure.block_reduce(im,(1,64,1,1))
             times = 128
-        elif self.img_size==256:
+        elif self.img_size==256 and False:
             im = create_batch(batchsize,256,512,nump)
             im = skimage.measure.block_reduce(im,(1,1,2,1))
         else:

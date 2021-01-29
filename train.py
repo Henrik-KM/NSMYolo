@@ -24,16 +24,17 @@ from torchvision import transforms
 from torch.autograd import Variable
 import torch.optim as optim
 
+import tensorflow as tf
+config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+config.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=config)
+
 trackMultiParticle = False
 log_progress = True
 train_unet = False
 unet = None
 
 if train_unet:
-    import tensorflow as tf
-    config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-    config.gpu_options.allow_growth = True
-    session = tf.compat.v1.Session(config=config)
     unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
 
 
