@@ -24,7 +24,7 @@ print_labels = False
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
     debug = False
-    YOLOLabels=None
+    YOLOLabels = np.reshape([None]*5,(1,1,5))
     
     nump = im.shape[-1]-2
     batchSize = im.shape[0]
@@ -56,13 +56,13 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                     x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
                     y1,y2 = np.min(particleOccurence[0])+constant,np.max(particleOccurence[0])+constant
                 
-                    try:
+                    if YOLOLabels[0,0,0] is None:
+                        YOLOLabels = np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5))   
+                    else:
                         YOLOLabels =np.append(YOLOLabels,np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5)),1)
-            
-                    except:
-                        YOLOLabels = np.reshape([None]*5,(1,1,5))
-                        YOLOLabels[0,0,:] = 0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)   
-                    
+
+                        
+                                            
                     if debug and traj == 0:
                         plt.figure()
                         ax = plt.gca()

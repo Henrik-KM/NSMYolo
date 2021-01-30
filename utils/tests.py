@@ -440,3 +440,9 @@ for j in range(0,batchSize):
                     elif p==2:
                         ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
 
+#%%
+for i in range(0,1):
+    im = create_batch(1,8192,128,nump)
+    im = skimage.measure.block_reduce(im,(1,64,1,1))
+    YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False)
+    print(YOLOLabels)
