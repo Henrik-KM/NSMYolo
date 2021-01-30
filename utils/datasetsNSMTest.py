@@ -23,7 +23,7 @@ import torchvision.transforms as transforms
 print_labels = False
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
-    debug = False
+    debug = True
     YOLOLabels = np.reshape([None]*5,(1,1,5))
     
     nump = im.shape[-1]-2
@@ -35,7 +35,7 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
             particle_img = im[j,:,:,2+k]
             particleOccurence = np.where(particle_img>treshold)
             if np.sum(particleOccurence) <= 0:
-                pass
+                continue
                 #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
             else:
                 trajTreshold = int(times/16)
@@ -45,9 +45,13 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                 trajectories = np.append(trajectories,times)
                 
                 for traj in range(0,len(trajectories)-1): 
+                    if debug and traj == 0:
+                        plt.figure()
+                        ax = plt.gca()
+                        plt.imshow(particle_img,aspect='auto')
                     particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
-                    if np.sum(particleOccurence[1]) <=0 or np.sum(particleOccurence[0]) <=0:
-                        break
+                    if np.sum(particleOccurence)<=0:#[1]) <=0 or np.sum(particleOccurence[0]) <=0:
+                        continue
                     constant = trajectories[traj]
                     if traj != 0:
                         particleOccurence = np.where(particle_img[trajectories[traj]+trajTreshold:trajectories[traj+1],:]>treshold)
@@ -55,25 +59,26 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                 
                     x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
                     y1,y2 = np.min(particleOccurence[0])+constant,np.max(particleOccurence[0])+constant
-                
-                    if YOLOLabels[0,0,0] is None:
-                        YOLOLabels = np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5))   
-                    else:
-                        YOLOLabels =np.append(YOLOLabels,np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5)),1)
+                    
+                    A = (x2-x1)*(y2-y1)
+                    if A > 100:
 
-                        
-                                            
-                    if debug and traj == 0:
-                        plt.figure()
-                        ax = plt.gca()
-                        plt.imshow(particle_img,aspect='auto')
-        
-                    if debug:
-                        import matplotlib.patches as pch                  
-                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
-                        #plt.imshow(particle_img,aspect='auto')
-                        print(YOLOLabels)
-                        print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
+                
+                        if YOLOLabels[0,0,0] is None:
+                            YOLOLabels = np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5))   
+                        else:
+                            YOLOLabels =np.append(YOLOLabels,np.reshape([0, np.abs(x2+x1)/2/(times-1), (y2+y1)/2/(length-1),(x2-x1)/(times-1),(y2-y1)/(length-1)],(1,1,5)),1)
+    
+                            
+                                                
+     
+            
+                        if debug:
+                            import matplotlib.patches as pch                  
+                            ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+                            #plt.imshow(particle_img,aspect='auto')
+                            print(YOLOLabels)
+                            print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
         
         
             if trackMultiParticle:
