@@ -23,7 +23,7 @@ import torchvision.transforms as transforms
 print_labels = False
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
-    debug = False
+    debug = True
     YOLOLabels = np.reshape([None]*5,(1,1,5))
     
     nump = im.shape[-1]-2
@@ -49,6 +49,7 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                         plt.figure()
                         ax = plt.gca()
                         plt.imshow(particle_img,aspect='auto')
+                        
                     particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
                     if np.sum(particleOccurence[1]) <=0 or np.sum(particleOccurence[0]) <=0:
                         continue
@@ -454,11 +455,16 @@ class ListDataset(Dataset):
     def collate_fn(self, batch):
         paths, imgs, targets = list(zip(*batch))
         # Remove empty placeholder targets
+        print(targets)
         targets = [boxes for boxes in targets if boxes is not None]
         # Add sample index to targets
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i        
-        targets = torch.cat(targets, 0)
+        try:
+            targets = torch.cat(targets, 0)
+        except:
+            pass
+
         #targets[:,0] = 0 #replace sample index with 0
         self.batch_count += 1
         return paths, imgs, targets
