@@ -433,13 +433,9 @@ for j in range(0,batchSize):
                 plt.imshow(im[0,:,:,0],aspect='auto')
                 YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
                 for p,x1,y1,x2,y2 in YOLOCoords:
-                    if p ==0:
-                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
-                    elif p == 1:
-                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='orange'))
-                    elif p==2:
-                        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='black'))
-
+                    p = int(p)
+                    ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor=colors[p]))   
+                    ax.text(x1,y1,(classes[p]),color = colors[p],fontsize=18)
 #%%
 plt.close('all')
 for i in range(0,3):

@@ -129,7 +129,9 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.pretrained_weights))
         else:
             model.load_darknet_weights(opt.pretrained_weights)
-
+            
+    if "Multi" in opt.pretrained_weights:
+        trackMultiParticle = True
     # Get dataloader
     dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 2000,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
@@ -179,17 +181,14 @@ if __name__ == "__main__":
             #print(targets)
             #plt.imshow(imgs[0,0,:,:].cpu(),aspect='auto')
             
-            try:
-                loss, outputs = model(imgs, targets)    
-                loss.backward()
-    
-                if batches_done % opt.gradient_accumulations:
-                    # Accumulates gradient before each step
-                    optimizer.step()
-                    optimizer.zero_grad()
-                    
-            except:
-                print("model training failed")
+            loss, outputs = model(imgs, targets)    
+            loss.backward()
+
+            if batches_done % opt.gradient_accumulations:
+                # Accumulates gradient before each step
+                optimizer.step()
+                optimizer.zero_grad()
+
 
             # ----------------
             #   Log progress
@@ -259,12 +258,10 @@ if __name__ == "__main__":
 
         if epoch % opt.checkpoint_interval == 0:
             if trackMultiParticle:
-                torch.save(model.state_dict(), f"weights/yolov3_Multi_ckpt_%d.pth" % epoch)
+                torch.save(model.state_dict(), f"weights/yolov3_Multi_ckpt_%d_%d.pth" % (epoch,opt.img_size))
             elif opt.img_size>= 512 and opt.img_size < 1024:
                 torch.save(model.state_dict(), f"weights/yolov3_tiny_ckpt_%d.pth" % epoch)    
-            elif  opt.img_size >= 1024:
-                torch.save(model.state_dict(), f"weights/yolov3_ckpt_Nopred_%d.pth" % epoch)
             elif unet != None and img_size==8192:
                 torch.save(model.state_dict(), f"weights/yolov3_ckpt_HugeDS_%d.pth" % epoch)
             else:
-                torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d.pth" % epoch)
+                torch.save(model.state_dict(), f"weights/yolov3_ckpt_%d_%d.pth" % (epoch,opt.img_size))
