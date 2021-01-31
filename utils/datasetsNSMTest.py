@@ -461,9 +461,7 @@ class ListDataset(Dataset):
     def collate_fn(self, batch):
         paths, imgs, targets = list(zip(*batch))
         # Remove empty placeholder targets
-        print(targets)
         targets = [boxes for boxes in targets if boxes is not None]
-        print(targets)
         # Add sample index to targets
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i        
