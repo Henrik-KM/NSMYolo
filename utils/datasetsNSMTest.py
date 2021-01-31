@@ -23,7 +23,7 @@ import torchvision.transforms as transforms
 print_labels = False
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
-    debug = True
+    debug = False
     YOLOLabels = np.reshape([None]*5,(1,1,5))
     
     nump = im.shape[-1]-2
