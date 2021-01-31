@@ -93,6 +93,9 @@ if __name__ == "__main__":
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
     opt = parser.parse_args()
     print(opt)
+    
+    if "Multi" in opt.pretrained_weights:
+        trackMultiParticle = True
 
     logger = Logger("logs")
 
@@ -130,8 +133,7 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
             
-    if "Multi" in opt.pretrained_weights:
-        trackMultiParticle = True
+
     # Get dataloader
     dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 2000,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
