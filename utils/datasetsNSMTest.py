@@ -1,11 +1,17 @@
 from __future__ import absolute_import, division, print_function
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 from scipy.signal import convolve
 from scipy.signal import convolve2d
 import skimage.measure
 import pandas as pd
 from utils.utils import *
+font = {'family' : 'normal',
+        'weight' : 'bold',
+        'size'   : 18}
+
+matplotlib.rc('font', **font)
 
 import glob
 import random
@@ -26,7 +32,7 @@ L_reduction_factor = 4
 T_reduction_factor = 1
 
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
-    debug = False
+    debug =False
     
     nump = im.shape[-1]-2
     batchSize = im.shape[0]
@@ -38,6 +44,8 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
             fig,ax2= plt.subplots(1)
             plt.imshow(im[j,:,:,1],aspect='auto')
             plt.title('All bounding boxes')
+            plt.xlabel('L')
+            plt.ylabel('t')
         for k in range(0,nump):
             particle_img = im[j,:,:,2+k]
 
@@ -58,6 +66,8 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                         ax = plt.gca()
                         plt.imshow(particle_img,aspect='auto')
                         plt.title('Single Particle bounding boxes')
+                        plt.xlabel('L')
+                        plt.ylabel('t')
                         
                     particleOccurence = np.where(particle_img[trajectories[traj]:trajectories[traj+1],:]>treshold)
                     if np.sum(particleOccurence[1]) <=0 or np.sum(particleOccurence[0]) <=0:
@@ -93,15 +103,17 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
         
         
     if trackMultiParticle and not np.isnan(np.array(YOLOLabels,dtype=float)).any():
-        YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
+        YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=times,ydim=length) #Higher threshold means more likely to group nearby particles
         if debug:
             print("Converting to Multi-Particle Boxes")
             print(YOLOLabels)
             plt.figure()
             ax = plt.gca()
             plt.imshow(im[0,:,:,0],aspect='auto')
-            plt.title('Combined bounding boxes')
-            YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
+            plt.title('Combined bounding boxes',fontsize=26)
+            plt.xlabel('L',fontsize=26)
+            plt.ylabel('t',fontsize=26)
+            YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=times,ydim=length)
             classes = ['particle','twoparticles','threeparticles']
             colors = ['white','orange','black']
             for p,x1,y1,x2,y2 in YOLOCoords:
@@ -206,7 +218,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         s = st()
         
         # Generate trajectory 
-        x0=(-1+2*np.random.rand())/2
+        x0=-1+2*np.random.rand()
         x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         

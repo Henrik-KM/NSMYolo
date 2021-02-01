@@ -302,8 +302,8 @@ def YOLOLabelSingleParticleToMultiple(YOLOLabels,overlap_thres=0.5,xdim=128,ydim
                 overlap = bbox_iou(torch.from_numpy(label1[1:]),torch.from_numpy(label2[1:]), x1y1x2y2=False)
                 
                 if overlap > overlap_thres:
-
                    newLabel = mergeLabels(label1.reshape(1,5),label2.reshape(1,5),xdim,ydim).reshape(1,5)
+
                    #YOLOLabels = np.delete(YOLOLabels,np.where(YOLOLabels==label1)).reshape(-1,5) 
                   # YOLOLabels = np.delete(YOLOLabels,np.where(YOLOLabels==label2)).reshape(-1,5) 
                    YOLOLabels =  YOLOLabels[~(label1 == YOLOLabels).all(1)]

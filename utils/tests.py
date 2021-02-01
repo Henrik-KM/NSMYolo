@@ -6,6 +6,7 @@ from scipy.signal import convolve2d
 import skimage.measure
 import pandas as pd
 
+
 import glob
 import random
 import os
@@ -444,4 +445,13 @@ for i in range(0,3):
     plt.figure()
     plt.imshow(im[0,:,:,1],aspect='auto')
     YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.05,trackMultiParticle=True)
-    print(YOLOLabels)
+    
+#%%
+
+plt.close('all')
+for i in range(0,2):
+    im = create_batch(1,128,128*4,lambda:3)
+    #im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)
+    plt.figure()
+    plt.imshow(im[0,:,:,1],aspect='auto')
+    YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=True)
