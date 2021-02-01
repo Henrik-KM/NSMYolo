@@ -514,7 +514,6 @@ class ListDataset(Dataset):
         if self.img_size ==8192:
             treshold = 0.05 #Downsampling forces us to alter treshold value
         YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=treshold,trackMultiParticle=self.trackMultiParticle)
-        print(YOLOLabels)
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08
         # Range on Is: 5e-3 = good contrast
