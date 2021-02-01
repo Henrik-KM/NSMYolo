@@ -439,7 +439,9 @@ for j in range(0,batchSize):
 #%%
 plt.close('all')
 for i in range(0,3):
-    im = create_batch(1,8192,128,nump)
+    im = create_batch(1,8192,128*4,nump)
     im = skimage.measure.block_reduce(im,(1,64,1,1))
+    plt.figure()
+    plt.imshow(im[0,:,:,1],aspect='auto')
     YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False)
     print(YOLOLabels)

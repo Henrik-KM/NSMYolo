@@ -22,6 +22,9 @@ from torch.utils.data import Dataset
 import torchvision.transforms as transforms
 print_labels = False
 
+L_reduction_factor = 4
+T_reduction_factor = 1
+
 def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=False):
     debug = False
     
@@ -89,7 +92,7 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                             print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
         
         
-        if trackMultiParticle:
+        if trackMultiParticle and not np.isnan(np.array(YOLOLabels,dtype=float)).any():
             YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
             if debug:
                 plt.figure()
@@ -284,6 +287,119 @@ def create_batch(batchsize,times,length,nump):
     return batch
 
 
+# Noise params
+dX=.00001+.00003*np.random.rand()
+dA=0
+noise_lev=.0001
+biglam=0.6+.4*np.random.rand()
+bgnoiseCval=0.03+.02*np.random.rand()
+bgnoise=.08+.04*np.random.rand()
+bigx0=.1*np.random.randn()
+
+def generate_trajectories(image,Int,Ds,st,nump):
+    vel = 0
+    length=image.shape[1]
+    times=image.shape[0]
+    x=np.linspace(-1,1,length)
+    t=np.linspace(-1,1,times)
+    X, Y=np.meshgrid(t,x)
+    f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
+    
+    for p_nbr in range(nump):
+
+        I = Int()
+        D = Ds()
+        s = st()
+        I = s*I*np.sqrt(2*np.pi)*256*.03/10000
+        # Generate trajectory 
+        x0=(-1+2*np.random.rand())/2
+        x0+=np.cumsum(vel+D*np.random.randn(times))
+        v1=np.transpose(I*f2(1,x0,s,0,Y))
+        
+        # Save trajectory with intensity in first image
+        image[...,0] *= (1-v1)##(1-v1)
+
+        # Add trajectory to full segmentation image image
+        particle_trajectory = np.transpose(f2(1,x0,0.05,0,Y))
+        image[...,1] += particle_trajectory 
+
+        # Save single trajectory as additional image
+        image[...,-p_nbr-1] = particle_trajectory  
+        
+    return image
+
+def gen_noise(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0):
+    length=image.shape[1]
+    times=image.shape[0]
+    x=np.linspace(-1,1,length)
+    t=np.linspace(-1,1,times)
+    X, Y=np.meshgrid(t,x)
+    f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
+    bgnoise*=np.random.randn(length)
+
+    tempcorr=3*np.random.rand()
+    dAmp=dA#*np.random.rand()
+    shiftval=dX*np.random.randn()
+    dx=0
+    dx2=0
+    dAmp0=0
+    
+    bg0=f2(1,bigx0,biglam,0,x)
+    ll=(np.pi-.05)
+    
+    noise_img = np.zeros_like(image)
+    for j in range(times):
+        dx=(.7*np.random.randn()+np.sin(ll*j))*dX
+
+        bgnoiseC=f2(1,0,bgnoiseCval,dx,x)
+        bgnoiseC/=np.sum(bgnoiseC)
+        bg=f2(1,bigx0+dx,biglam,0,x)*(1+convolve(bgnoise,bgnoiseC,mode="same"))
+        dAmp0=dA*np.random.randn()
+        bg*=(1+dAmp0)
+        noise_img[j,:,0]=bg*(1+noise_lev*np.random.randn(length))+.4*noise_lev*np.random.randn(length)
+    return noise_img, bg0
+
+def post_process(image,bg0):             
+    image[:,:,0]/=bg0 # Normalize image by the bare signal
+
+    image[:,:,0]/=np.mean(image[...,0],axis=0)        
+    image[:,:,0]-=np.expand_dims(np.mean(image[:,:,0],axis=0),axis=0) # Subtract mean over image
+
+    # Perform same preprocessing as done on experimental images
+    ono=np.ones((200,1))
+    ono=ono/np.sum(ono)
+    image[:,:,0]-=convolve2d(image[:,:,0],ono,mode="same")
+    image[:,:,0]-=convolve2d(image[:,:,0],np.transpose(ono),mode="same")
+
+    image[:,:,0]-=np.expand_dims(np.mean(image[:,:,0],axis=0),axis=0)
+    image[:,:,0]*=1000
+    
+    return image
+        
+def create_batch(batchsize,times,length,nump):            
+    TT = int(times/T_reduction_factor)
+    LL = int(length/L_reduction_factor)
+    nump = nump() # resolve nump for each batch
+    batch = np.zeros((batchsize,TT,LL,nump+2))
+    
+    for b in range(batchsize):
+
+        image = np.zeros((times,length,nump+2))
+        
+        # Add noise to image
+        noise_image, bg0 = gen_noise(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0)
+        image = generate_trajectories(noise_image,Int,Ds,st,nump)
+        
+        # Post process
+        image = post_process(image,bg0)
+        image = skimage.measure.block_reduce(image,(T_reduction_factor,L_reduction_factor,1),np.mean)
+        
+        batch[b,...] = image
+    
+    return batch
+
+
+
 
 
 def pad_to_square(img, pad_value):
@@ -352,11 +468,11 @@ class ListDataset(Dataset):
         # ---------
         #  Image
         # ---------
-        print_labels = False
         batchsize = 1 
         
         times = self.img_size #normal images are 600 x10000
         length = self.img_size
+        
         if self.unet==None:   
             length = 600
             im = create_batch(batchsize,times,length,nump)
@@ -364,14 +480,11 @@ class ListDataset(Dataset):
         elif self.img_size==8192:
             length = 128
             times = 8192
-            im = create_batch(batchsize,times,length,nump)
-            im = skimage.measure.block_reduce(im,(1,64,1,1))
+            im = create_batch(batchsize,times,length*4,nump)
+            im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)
             times = 128
-        elif self.img_size==256 and False:
-            im = create_batch(batchsize,256,512,nump)
-            im = skimage.measure.block_reduce(im,(1,1,2,1))
         else:
-            im = create_batch(batchsize,times,length,nump)
+            im = create_batch(batchsize,times,length*4,nump)
             
         
         
@@ -382,7 +495,7 @@ class ListDataset(Dataset):
        # print(im.shape)
         
         if self.unet==None: #If images not square, downsample and pad
-            im = skimage.measure.block_reduce(im,(1,1,4,1))
+            im = skimage.measure.block_reduce(im,(1,1,4,1),np.mean)
             im = im[:,:,11:139,:]
             padVal = int((times-128)/2)
             im = np.pad(im,((0,0),(0,0),(padVal,padVal),(0,0)))
@@ -465,9 +578,10 @@ class ListDataset(Dataset):
         # Add sample index to targets
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i        
-
-        targets = torch.cat(targets, 0)
-
+        try:
+            targets = torch.cat(targets, 0)
+        except:
+            targets = []
 
         #targets[:,0] = 0 #replace sample index with 0
         self.batch_count += 1
