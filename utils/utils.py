@@ -213,11 +213,16 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
     """
     if not x1y1x2y2:
         # Transform from center and width to exact coordinates
-        b1_x1, b1_x2 = box1[:, 0] - box1[:, 2] / 2, box1[:, 0] + box1[:, 2] / 2
-        b1_y1, b1_y2 = box1[:, 1] - box1[:, 3] / 2, box1[:, 1] + box1[:, 3] / 2
-        b2_x1, b2_x2 = box2[:, 0] - box2[:, 2] / 2, box2[:, 0] + box2[:, 2] / 2
-        b2_y1, b2_y2 = box2[:, 1] - box2[:, 3] / 2, box2[:, 1] + box2[:, 3] / 2
-
+        try:
+            b1_x1, b1_x2 = box1[:, 0] - box1[:, 2] / 2, box1[:, 0] + box1[:, 2] / 2
+            b1_y1, b1_y2 = box1[:, 1] - box1[:, 3] / 2, box1[:, 1] + box1[:, 3] / 2
+            b2_x1, b2_x2 = box2[:, 0] - box2[:, 2] / 2, box2[:, 0] + box2[:, 2] / 2
+            b2_y1, b2_y2 = box2[:, 1] - box2[:, 3] / 2, box2[:, 1] + box2[:, 3] / 2
+        except:
+            b1_x1, b1_x2 = box1[0] - box1[2] / 2, box1[0] + box1[2] / 2
+            b1_y1, b1_y2 = box1[1] - box1[3] / 2, box1[1] + box1[3] / 2
+            b2_x1, b2_x2 = box2[0] - box2[2] / 2, box2[0] + box2[2] / 2
+            b2_y1, b2_y2 = box2[1] - box2[3] / 2, box2[1] + box2[3] / 2
     else:
         # Get the coordinates of bounding boxes
         try:
@@ -294,7 +299,7 @@ def YOLOLabelSingleParticleToMultiple(YOLOLabels,overlap_thres=0.5,xdim=128,ydim
             for labelCombo in labelCombos:
                 label1 = labelCombo[0,:]
                 label2 = labelCombo[1,:]
-                overlap = bbox_iou(torch.from_numpy(label1[1:]),torch.from_numpy(label2[1:]), x1y1x2y2=True)
+                overlap = bbox_iou(torch.from_numpy(label1[1:]),torch.from_numpy(label2[1:]), x1y1x2y2=False)
                 
                 if overlap > overlap_thres:
 

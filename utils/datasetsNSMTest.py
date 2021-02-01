@@ -32,7 +32,7 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
     batchSize = im.shape[0]
     #YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5)) #np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
     #YOLOLabels = np.reshape([None]*5,(1,1,5))
-    YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5))
+    YOLOLabels =np.reshape([None]*batchSize*1*5,(batchSize,1,5))
     for j in range(0,batchSize):
         if debug:
             fig,ax2= plt.subplots(1)
@@ -92,20 +92,22 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
                             print(str(x1)+"--"+str(x2)+"--"+str(y1)+"--"+str(y2))
         
         
-        if trackMultiParticle and not np.isnan(np.array(YOLOLabels,dtype=float)).any():
-            YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
-            if debug:
-                plt.figure()
-                ax = plt.gca()
-                plt.imshow(im[0,:,:,0],aspect='auto')
-                plt.title('Combined bounding boxes')
-                YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
-                classes = ['particle','twoparticles','threeparticles']
-                colors = ['white','orange','black']
-                for p,x1,y1,x2,y2 in YOLOCoords:
-                    p = int(p)
-                    ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor=colors[p]))   
-                    ax.text(x1,y1,(classes[p]),color = colors[p],fontsize=18)
+    if trackMultiParticle and not np.isnan(np.array(YOLOLabels,dtype=float)).any():
+        YOLOLabels = YOLOLabelSingleParticleToMultiple(YOLOLabels[0],overlap_thres=0.6,xdim=length,ydim=times) #Higher threshold means more likely to group nearby particles
+        if debug:
+            print("Converting to Multi-Particle Boxes")
+            print(YOLOLabels)
+            plt.figure()
+            ax = plt.gca()
+            plt.imshow(im[0,:,:,0],aspect='auto')
+            plt.title('Combined bounding boxes')
+            YOLOCoords = ConvertYOLOLabelsToCoord(YOLOLabels,xdim=length,ydim=times)
+            classes = ['particle','twoparticles','threeparticles']
+            colors = ['white','orange','black']
+            for p,x1,y1,x2,y2 in YOLOCoords:
+                p = int(p)
+                ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor=colors[p]))   
+                ax.text(x1,y1,(classes[p]),color = colors[p],fontsize=18)
                     
     return YOLOLabels
 
@@ -172,7 +174,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
     return YOLOLabels
 
-nump = lambda: np.clip(np.random.randint(5),0,3)
+nump = lambda: 1+np.random.randint(2)#np.clip(np.random.randint(5),0,3)
 
 
 # Particle params
@@ -296,7 +298,7 @@ bgnoiseCval=0.03+.02*np.random.rand()
 bgnoise=.08+.04*np.random.rand()
 bigx0=.1*np.random.randn()
 
-def generate_trajectories(image,Int,Ds,st,nump):
+def generate_trajectories2(image,Int,Ds,st,nump):
     vel = 0
     length=image.shape[1]
     times=image.shape[0]
@@ -328,7 +330,7 @@ def generate_trajectories(image,Int,Ds,st,nump):
         
     return image
 
-def gen_noise(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0):
+def gen_noise2(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0):
     length=image.shape[1]
     times=image.shape[0]
     x=np.linspace(-1,1,length)
@@ -359,7 +361,7 @@ def gen_noise(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0):
         noise_img[j,:,0]=bg*(1+noise_lev*np.random.randn(length))+.4*noise_lev*np.random.randn(length)
     return noise_img, bg0
 
-def post_process(image,bg0):             
+def post_process2(image,bg0):             
     image[:,:,0]/=bg0 # Normalize image by the bare signal
 
     image[:,:,0]/=np.mean(image[...,0],axis=0)        
@@ -508,8 +510,11 @@ class ListDataset(Dataset):
             v1 = np.expand_dims(im[...,1],axis=-1)
         #plt.imshow(v1[0,:,:,0],aspect='auto')
        # print(im.shape)
-        YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=0.5,trackMultiParticle=self.trackMultiParticle)
-        
+        treshold = 0.5
+        if self.img_size ==8192:
+            treshold = 0.05 #Downsampling forces us to alter treshold value
+        YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=treshold,trackMultiParticle=self.trackMultiParticle)
+        print(YOLOLabels)
         # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
         # Range on Ds: 0.03 -> 0.08
         # Range on Is: 5e-3 = good contrast
@@ -578,10 +583,9 @@ class ListDataset(Dataset):
         # Add sample index to targets
         for i, boxes in enumerate(targets):
             boxes[:, 0] = i        
-        try:
-            targets = torch.cat(targets, 0)
-        except:
-            targets = []
+            
+        targets = torch.cat(targets, 0)
+
 
         #targets[:,0] = 0 #replace sample index with 0
         self.batch_count += 1
