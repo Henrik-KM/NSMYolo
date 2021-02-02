@@ -2,6 +2,7 @@ from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_10.pth --class_path data/custom/classesNSM.names')
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_30.pth --class_path data/custom/classesNSMMulti.names')
 # 8192 runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_Nopred_8192DSx128_kaggl3.pth --class_path data/custom/classesNSM.names --img_size 8192')
+# 8192Multi runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_3_8192.pth --class_path data/custom/classesNSMMulti.names --img_size 8192')
 from models import *
 from utils.utils import *
 from utils.datasetsNSMTest import *
@@ -37,7 +38,7 @@ if __name__ == "__main__":
     parser.add_argument("--model_def", type=str, default="config/yolov3.cfg", help="path to model definition file")
     parser.add_argument("--weights_path", type=str, default="weights/yolov3.weights", help="path to weights file")
     parser.add_argument("--class_path", type=str, default="data/coco.names", help="path to class label file")
-    parser.add_argument("--conf_thres", type=float, default=0.9, help="object confidence threshold")
+    parser.add_argument("--conf_thres", type=float, default=0.8, help="object confidence threshold")
     parser.add_argument("--nms_thres", type=float, default=0.6, help="iou thresshold for non-maximum suppression")
     parser.add_argument("--overlap_thres", type=float, default=0.5, help="overlap thresshold for removing images with overlapping trajectories")
     parser.add_argument("--batch_size", type=int, default=1, help="size of the batches")
@@ -71,7 +72,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 5,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 3,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -156,6 +157,12 @@ if __name__ == "__main__":
                      # Add the bbox to the plot
                      print(str(x1) + " " + str(y1) + " " + str(box_w) + " "+str(box_h))
                      ax.add_patch(bbox)
+                     if opt.img_size ==8192:
+                         locs, labels = plt.yticks()
+                         locs = np.linspace(0,128,9)[0::2]
+                         labels = np.linspace(0,8192,9)[0::2]
+                         labels = [str(int(label)) for label in labels]
+                         plt.yticks(locs,labels)
                  except: 
                          print("Flawed detection bbox")
                                     

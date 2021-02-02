@@ -476,13 +476,15 @@ class ListDataset(Dataset):
         self.totalData = totalData
         self.unet = 1#unet
         self.trackMultiParticle = trackMultiParticle
+        self.imSave = np.ones((1,1,1,1))*np.nan
 
     def __getitem__(self, index):
 
         # ---------
         #  Image
         # ---------
-        batchsize = 1 
+        batchsize = 1
+        rotateData = True
         
         times = self.img_size #normal images are 600 x10000
         length = self.img_size
@@ -493,10 +495,22 @@ class ListDataset(Dataset):
             length = self.img_size
         elif self.img_size==8192:
             length = 128
-            times = 8192
-            im = create_batch(batchsize,times,length*4,nump)
-            im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)
-            times = 128
+            times = 128 
+            if  np.isnan(self.imSave).any():
+                im = create_batch(batchsize,8192,length*4,nump)
+                im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)    
+                
+                if rotateData:                
+                    self.imSave = np.zeros((3,128,length,im.shape[-1]))                
+                    self.imSave[0,:,:,:] = np.flip(im,axis=(1))[0,:,:,:]
+                    self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
+                    self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
+            else:
+                im = np.expand_dims(self.imSave[0,:,:,:],0)
+                self.imSave = self.imSave[1:,:,:,:]
+                if not len(self.imSave):          
+                    self.imSave = np.ones((1,1,1,1))*np.nan
+                               
         else:
             im = create_batch(batchsize,times,length*4,nump)
             
@@ -581,10 +595,6 @@ class ListDataset(Dataset):
             targets = torch.zeros((len(boxes), 6))
             targets[:, 1:] = boxes
         
-        #print(img.shape)
-       # plt.figure()
-        #plt.imshow(img[0,:,:],aspect='auto')
-        #print(targets)
         return "", img, targets
 
     def collate_fn(self, batch):
