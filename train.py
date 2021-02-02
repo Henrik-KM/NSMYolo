@@ -135,7 +135,7 @@ if __name__ == "__main__":
             
 
     # Get dataloader
-    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet,trackMultiParticle=trackMultiParticle)
+    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 250,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,

@@ -489,7 +489,7 @@ class ListDataset(Dataset):
         
         if self.unet==None:   
             length = 600
-            im = create_batch(batchsize,times,length,nump)
+            im = create_batch(batchsize,times,length*4,nump)
             length = self.img_size
         elif self.img_size==8192:
             length = 128
