@@ -100,7 +100,6 @@ if __name__ == "__main__":
     logger = Logger("logs")
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #device = "cpu"
 
     os.makedirs("output", exist_ok=True)
     os.makedirs("checkpoints", exist_ok=True)
@@ -134,14 +133,14 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
             
-    freeze_index=73        
-    for name, param in model.named_parameters():
-        # module_list.21.batch_norm_21.bias
-        layer_id = int(name.split('.')[-3])
+    # freeze_index=73        
+    # for name, param in model.named_parameters():
+    #     # module_list.21.batch_norm_21.bias
+    #     layer_id = int(name.split('.')[-3])
     
-        # Freeze layers before 6
-        if layer_id < freeze_index:
-            param.requires_grad = False
+    #     # Freeze layers before 6
+    #     if layer_id < freeze_index:
+    #         param.requires_grad = False
             
     # Get dataloader
     dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 250,unet=unet,trackMultiParticle=trackMultiParticle)
@@ -186,11 +185,9 @@ if __name__ == "__main__":
             except:
                 imgs = torch.stack(imgs) 
                 imgs = Variable(imgs.to(device))
+                
             targets = Variable(targets.to(device), requires_grad=False)
 
-            #model=model.float()
-            #print(targets)
-            #plt.imshow(imgs[0,0,:,:].cpu(),aspect='auto')
             
             loss, outputs = model(imgs, targets)    
             loss.backward()

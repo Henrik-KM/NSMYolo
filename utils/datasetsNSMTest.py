@@ -36,8 +36,6 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
     
     nump = im.shape[-1]-2
     batchSize = im.shape[0]
-    #YOLOLabels =np.reshape([None]*batchSize*nump*5,(batchSize,nump,5)) #np.zeros((batchSize,nump,5))#np.reshape([None]*1*2*5,(1,2,5))#
-    #YOLOLabels = np.reshape([None]*5,(1,1,5))
     YOLOLabels =np.reshape([None]*batchSize*1*5,(batchSize,1,5))
     for j in range(0,batchSize):
         if debug:
@@ -52,7 +50,6 @@ def ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMu
             particleOccurence = np.where(particle_img>treshold)
             if np.sum(particleOccurence) <= 0:
                 continue
-                #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
             else:
                 trajTreshold = int(times/16)
                 trajectoryOccurence = np.diff(particleOccurence[0])
@@ -143,7 +140,6 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
             particleOccurence = np.where(particle_img>treshold)
             if np.sum(particleOccurence) <= 0:
                 pass
-                #YOLOLabels = np.delete(YOLOLabels,[j,k],1)
             else:
                 x1,x2 = np.min(particleOccurence[1]),np.max(particleOccurence[1])  
                 y1,y2 = np.min(particleOccurence[0]),np.max(particleOccurence[0])  
@@ -299,96 +295,6 @@ def create_batch(batchsize,times,length,nump):
         batch[b,...] = image
     
     return batch
-
-
-# Noise params
-dX=.00001+.00003*np.random.rand()
-dA=0
-noise_lev=.0001
-biglam=0.6+.4*np.random.rand()
-bgnoiseCval=0.03+.02*np.random.rand()
-bgnoise=.08+.04*np.random.rand()
-bigx0=.1*np.random.randn()
-
-def generate_trajectories2(image,Int,Ds,st,nump):
-    vel = 0
-    length=image.shape[1]
-    times=image.shape[0]
-    x=np.linspace(-1,1,length)
-    t=np.linspace(-1,1,times)
-    X, Y=np.meshgrid(t,x)
-    f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
-    
-    for p_nbr in range(nump):
-
-        I = Int()
-        D = Ds()
-        s = st()
-        I = s*I*np.sqrt(2*np.pi)*256*.03/10000
-        # Generate trajectory 
-        x0=(-1+2*np.random.rand())/2
-        x0+=np.cumsum(vel+D*np.random.randn(times))
-        v1=np.transpose(I*f2(1,x0,s,0,Y))
-        
-        # Save trajectory with intensity in first image
-        image[...,0] *= (1-v1)##(1-v1)
-
-        # Add trajectory to full segmentation image image
-        particle_trajectory = np.transpose(f2(1,x0,0.05,0,Y))
-        image[...,1] += particle_trajectory 
-
-        # Save single trajectory as additional image
-        image[...,-p_nbr-1] = particle_trajectory  
-        
-    return image
-
-def gen_noise2(image,dX,dA,noise_lev,biglam,bgnoiseCval,bgnoise,bigx0):
-    length=image.shape[1]
-    times=image.shape[0]
-    x=np.linspace(-1,1,length)
-    t=np.linspace(-1,1,times)
-    X, Y=np.meshgrid(t,x)
-    f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
-    bgnoise*=np.random.randn(length)
-
-    tempcorr=3*np.random.rand()
-    dAmp=dA#*np.random.rand()
-    shiftval=dX*np.random.randn()
-    dx=0
-    dx2=0
-    dAmp0=0
-    
-    bg0=f2(1,bigx0,biglam,0,x)
-    ll=(np.pi-.05)
-    
-    noise_img = np.zeros_like(image)
-    for j in range(times):
-        dx=(.7*np.random.randn()+np.sin(ll*j))*dX
-
-        bgnoiseC=f2(1,0,bgnoiseCval,dx,x)
-        bgnoiseC/=np.sum(bgnoiseC)
-        bg=f2(1,bigx0+dx,biglam,0,x)*(1+convolve(bgnoise,bgnoiseC,mode="same"))
-        dAmp0=dA*np.random.randn()
-        bg*=(1+dAmp0)
-        noise_img[j,:,0]=bg*(1+noise_lev*np.random.randn(length))+.4*noise_lev*np.random.randn(length)
-    return noise_img, bg0
-
-def post_process2(image,bg0):             
-    image[:,:,0]/=bg0 # Normalize image by the bare signal
-
-    image[:,:,0]/=np.mean(image[...,0],axis=0)        
-    image[:,:,0]-=np.expand_dims(np.mean(image[:,:,0],axis=0),axis=0) # Subtract mean over image
-
-    # Perform same preprocessing as done on experimental images
-    ono=np.ones((200,1))
-    ono=ono/np.sum(ono)
-    image[:,:,0]-=convolve2d(image[:,:,0],ono,mode="same")
-    image[:,:,0]-=convolve2d(image[:,:,0],np.transpose(ono),mode="same")
-
-    image[:,:,0]-=np.expand_dims(np.mean(image[:,:,0],axis=0),axis=0)
-    image[:,:,0]*=1000
-    
-    return image
         
 def create_batch(batchsize,times,length,nump):            
     TT = int(times/T_reduction_factor)
@@ -411,8 +317,6 @@ def create_batch(batchsize,times,length,nump):
         batch[b,...] = image
     
     return batch
-
-
 
 
 
@@ -489,11 +393,7 @@ class ListDataset(Dataset):
         times = self.img_size #normal images are 600 x10000
         length = self.img_size
         
-        if self.unet==None:   
-            length = 600
-            im = create_batch(batchsize,times,length*4,nump)
-            length = self.img_size
-        elif self.img_size==8192:
+        if self.img_size==8192:
             length = 128
             times = 128 
             if  np.isnan(self.imSave).any():
@@ -515,47 +415,28 @@ class ListDataset(Dataset):
             im = create_batch(batchsize,times,length*4,nump)
             
         
-        
-        
-
-        
-        
-       # print(im.shape)
-        
-        if self.unet==None: #If images not square, downsample and pad
+        if self.unet==None: #If images not square, downsample and pad, currently unused
             im = skimage.measure.block_reduce(im,(1,1,4,1),np.mean)
             im = im[:,:,11:139,:]
             padVal = int((times-128)/2)
             im = np.pad(im,((0,0),(0,0),(padVal,padVal),(0,0)))
-        #plt.figure("realIm")
-        #plt.imshow(im[0,:,:,0],aspect='auto')
+
+
         try:
             v1 = self.unet.predict(np.expand_dims(im[...,0],axis=-1))          
         except:
-           # print("Failed to predict")
             v1 = np.expand_dims(im[...,1],axis=-1)
-        #plt.imshow(v1[0,:,:,0],aspect='auto')
-       # print(im.shape)
+
         treshold = 0.5
         if self.img_size ==8192:
             treshold = 0.05 #Downsampling forces us to alter treshold value
         YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=treshold,trackMultiParticle=self.trackMultiParticle)
-        # For training on iOC = 5e-4, D = [10,20,50] mu m^2/s
-        # Range on Ds: 0.03 -> 0.08
-        # Range on Is: 5e-3 = good contrast
-        
-        # Plot predictions of validation samples
-        #YOLOLabels=ConvertTrajToBoundingBoxes(v1,batchSize,nump,length=length,times=times,treshold=0.5)
-       # v1 = np.sum(v1[0,...],0).T #Place all particles in the same image
-        # v1 = np.sum(v1,1).T
+
         # Extract image as PyTorch tensor
         v1 = np.squeeze(v1,0)
         img = transforms.ToTensor()(v1)
-       #img = torch.from_numpy(v1)
         img = torch.cat([img]*3)
         
-        #img = torch.cat([img]*3) # Convert to 3-channel image to simulate RGB information
-        #print(img.shape)
         # Handle images with less than three channels ## defunct? 
         if len(img.shape) != 3:
             img = img.unsqueeze(0)
@@ -573,8 +454,7 @@ class ListDataset(Dataset):
         targets = None   
         YOLOLabels = np.array(YOLOLabels,dtype=float)
         
-        if not np.isnan(YOLOLabels).any():#not any(val is None for val in YOLOLabels) and not any(val is np.nan for val in YOLOLabels):#np.isnan(YOLOLabels).any():
-           # YOLOLabels = np.array(YOLOLabels,dtype=float)
+        if not np.isnan(YOLOLabels).any():
             boxes = torch.from_numpy(YOLOLabels).reshape(-1,5)#torch.from_numpy(np.loadtxt(label_path).reshape(-1, 5))
             if not self.normalized_labels:
                 # Extract coordinates for unpadded + unscaled image
