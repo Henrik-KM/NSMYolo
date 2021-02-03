@@ -123,6 +123,7 @@ if __name__ == "__main__":
     if opt.img_size>= 512 and opt.img_size < 1024 and False:
         model_def =  "config/yolov3-customNSMtiny.cfg"
     model = Darknet(model_def).to(device)
+    
     model.apply(weights_init_normal)
     model.cuda()
 
@@ -133,7 +134,15 @@ if __name__ == "__main__":
         else:
             model.load_darknet_weights(opt.pretrained_weights)
             
-
+    freeze_index=73        
+    for name, param in model.named_parameters():
+        # module_list.21.batch_norm_21.bias
+        layer_id = int(name.split('.')[-3])
+    
+        # Freeze layers before 6
+        if layer_id < freeze_index:
+            param.requires_grad = False
+            
     # Get dataloader
     dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 250,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
