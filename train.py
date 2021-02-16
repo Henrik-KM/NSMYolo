@@ -1,6 +1,6 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_ckpt_19.pth --epochs 29')
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_Multi_ckpt_30.pth --epochs 29')
+# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_Multi_ckpt_96_8192.pth --epochs 4 --total_data 5000 --checkpoint_interval 1 --img_size 128 --n_cpu 8')
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=1 --epochs 35')
 from models import *
 from utils.logger import *
@@ -91,11 +91,13 @@ if __name__ == "__main__":
     parser.add_argument("--evaluation_interval", type=int, default=4, help="interval evaluations on validation set")
     parser.add_argument("--compute_map", default=False, help="if True computes mAP every tenth batch")
     parser.add_argument("--multiscale_training", default=True, help="allow for multi-scale training")
+    parser.add_argument("--total_data", default=250, help="Nr of images per epoch")
     opt = parser.parse_args()
     print(opt)
     
     if "Multi" in opt.pretrained_weights:
         trackMultiParticle = True
+    totalData = int(opt.total_data)
 
     logger = Logger("logs")
 
@@ -142,7 +144,7 @@ if __name__ == "__main__":
     #         param.requires_grad = False
             
     # Get dataloader
-    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = 500,unet=unet,trackMultiParticle=trackMultiParticle)
+    dataset = ListDataset(train_path,img_size=opt.img_size, augment=False, multiscale=opt.multiscale_training,totalData = totalData,unet=unet,trackMultiParticle=trackMultiParticle)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,

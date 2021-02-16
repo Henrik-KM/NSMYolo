@@ -1,6 +1,6 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_10.pth --class_path data/custom/classesNSM.names')
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_30.pth --class_path data/custom/classesNSMMulti.names')
+# 128Multi runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_3_128.pth --class_path data/custom/classesNSMMulti.names --img_size 128')
 # 8192 runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSM.cfg --weights_path weights/yolov3_ckpt_Nopred_8192DSx128_kaggl3.pth --class_path data/custom/classesNSM.names --img_size 8192')
 # 8192Multi runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/detect.py',args='--model_def config/yolov3-customNSMMulti.cfg --weights_path weights/yolov3_Multi_ckpt_3_8192.pth --class_path data/custom/classesNSMMulti.names --img_size 8192')
 from models import *
@@ -55,9 +55,12 @@ if __name__ == "__main__":
     os.makedirs("output", exist_ok=True)
 
     # Set up model
-    
+    times = opt.img_size
+    length = opt.img_size
     if opt.img_size==8192:
         model = Darknet(opt.model_def, img_size=128).to(device)
+        times = 128
+        length=128
     else: 
         model = Darknet(opt.model_def, img_size=opt.img_size).to(device)
 
@@ -72,7 +75,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 3,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 5,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -94,7 +97,6 @@ if __name__ == "__main__":
    # for batch_i, (img_paths, input_imgs) in enumerate(dataloader):
     for batch_i, (_, imgs, targets) in enumerate(dataloader):
         input_imgs = imgs
-        print(targets)
         # Configure input
         try:
             input_imgs = Variable(input_imgs.type(Tensor))
@@ -165,7 +167,12 @@ if __name__ == "__main__":
                          plt.yticks(locs,labels)
                  except: 
                          print("Flawed detection bbox")
-                                    
+        for _, x1, y1, x2, y2 in ConvertYOLOLabelsToCoord(targets[:,1:],times,length):
+            box_w = x2 - x1
+            box_h = y2 - y1
+            ax = plt.gca()
+            bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor='white', facecolor="none")
+            ax.add_patch(bbox)
          # Save generated image with detections
         # plt.axis("off")
         # plt.gca().xaxis.set_major_locator(NullLocator())

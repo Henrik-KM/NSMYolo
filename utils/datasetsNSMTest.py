@@ -182,7 +182,7 @@ def ConvertTrajToBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiPa
 
     return YOLOLabels
 
-nump = lambda: 1+np.random.randint(2)#np.clip(np.random.randint(5),0,3)
+nump = lambda: 1+np.random.randint(3)#np.clip(np.random.randint(5),0,3)
 
 
 # Particle params
@@ -381,6 +381,7 @@ class ListDataset(Dataset):
         self.unet = 1#unet
         self.trackMultiParticle = trackMultiParticle
         self.imSave = np.ones((1,1,1,1))*np.nan
+        self.targetSave = np.ones((1,1,1,1))*np.nan
 
     def __getitem__(self, index):
 
@@ -392,27 +393,72 @@ class ListDataset(Dataset):
         
         times = self.img_size #normal images are 600 x10000
         length = self.img_size
-        
-        if self.img_size==8192:
-            length = 128
-            times = 128 
-            if  np.isnan(self.imSave).any():
+       
+        if  np.isnan(self.imSave).any():       
+            #Generate image
+            if self.img_size==8192:
+                length = 128
+                times = 128 
                 im = create_batch(batchsize,8192,length*4,nump)
-                im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)    
-                
-                if rotateData:                
-                    self.imSave = np.zeros((3,128,length,im.shape[-1]))                
-                    self.imSave[0,:,:,:] = np.flip(im,axis=(1))[0,:,:,:]
-                    self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
-                    self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
+                im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)   
             else:
-                im = np.expand_dims(self.imSave[0,:,:,:],0)
-                self.imSave = self.imSave[1:,:,:,:]
-                if not len(self.imSave):          
-                    self.imSave = np.ones((1,1,1,1))*np.nan
-                               
+                im = create_batch(batchsize,times,length*4,nump)
+                
+            #Generate YOLO boxes
+            treshold = 0.5
+            if self.img_size ==8192:
+                treshold = 0.05 #Downsampling forces us to alter treshold value
+            YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=treshold,trackMultiParticle=self.trackMultiParticle)
+
+            
+            #Store flipped images and YOLO boxes
+            if rotateData:                
+                self.imSave = np.zeros((3,times,length,im.shape[-1]))                
+                self.imSave[0,:,:,:] = np.flip(im,axis=(1))[0,:,:,:]
+                self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
+                self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
+                
+                self.targetSave = np.zeros((3,np.size(YOLOLabels,0),5))   
+                
+                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                temp = length-1-flipLabels[:,4] 
+                flipLabels[:,4] = length-1-flipLabels[:,2] 
+                flipLabels[:,2] = temp
+                
+                self.targetSave[0,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                temp = times-1-flipLabels[:,3] 
+                flipLabels[:,3] = times-1-flipLabels[:,1] 
+                flipLabels[:,1] = temp 
+                self.targetSave[1,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                
+                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                temp = length-1-flipLabels[:,4] 
+                flipLabels[:,4] = length-1-flipLabels[:,2] 
+                flipLabels[:,2] = temp    
+                temp = times-1-flipLabels[:,3] 
+                flipLabels[:,3] = times-1-flipLabels[:,1] 
+                flipLabels[:,1] = temp    
+                self.targetSave[2,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+
+
+               
+                
+                
+                if self.img_size == 128:
+                    self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=1),0) #Rotate by 90, 270 degrees, maybe  ok for square imgs?
+                    self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=3),0)
+      
         else:
-            im = create_batch(batchsize,times,length*4,nump)
+            im = np.expand_dims(self.imSave[0,:,:,:],0)
+            self.imSave = self.imSave[1:,:,:,:]
+            YOLOLabels = self.targetSave[0,:,:]
+            self.targetSave = self.targetSave[1:,:,:]
+            if not len(self.imSave):          
+                self.imSave = np.ones((1,1,1,1))*np.nan
+                self.targetSave = np.ones((1,1,1,1))*np.nan
+                               
+
             
         
         if self.unet==None: #If images not square, downsample and pad, currently unused
@@ -427,10 +473,6 @@ class ListDataset(Dataset):
         except:
             v1 = np.expand_dims(im[...,1],axis=-1)
 
-        treshold = 0.5
-        if self.img_size ==8192:
-            treshold = 0.05 #Downsampling forces us to alter treshold value
-        YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=length,times=times,treshold=treshold,trackMultiParticle=self.trackMultiParticle)
 
         # Extract image as PyTorch tensor
         v1 = np.squeeze(v1,0)

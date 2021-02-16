@@ -232,11 +232,24 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
             b1_x1, b1_y1, b1_x2, b1_y2 = box1[0], box1[1], box1[2], box1[3]
             b2_x1, b2_y1, b2_x2, b2_y2 = box2[0], box2[1], box2[2], box2[3]
 
+    
+
     # get the corrdinates of the intersection rectangle
     inter_rect_x1 = torch.max(b1_x1, b2_x1)
     inter_rect_y1 = torch.max(b1_y1, b2_y1)
     inter_rect_x2 = torch.min(b1_x2, b2_x2)
     inter_rect_y2 = torch.min(b1_y2, b2_y2)
+    
+    try:
+        #Check if box completely inside other box 
+        if (b1_x1 >= b2_x1 and b1_y1 >= b2_y1 and b1_x2 <= b2_x2 and b1_y2 <= b2_y2) or (b1_x1 <= b2_x1 and b1_y1 <= b2_y1 and b1_x2 >= b2_x2 and b1_y2 >= b2_y2):
+            return torch.from_numpy(np.array(1))
+        if inter_rect_x2 < inter_rect_x1 or inter_rect_y2 < inter_rect_y1: #If boxes are not overlapping, return 0
+            return torch.from_numpy(np.array(0))
+    except:
+        pass
+     
+    
     # Intersection area
     inter_area = torch.clamp(inter_rect_x2 - inter_rect_x1 + 1, min=0) * torch.clamp(
         inter_rect_y2 - inter_rect_y1 + 1, min=0
@@ -247,7 +260,10 @@ def bbox_iou(box1, box2, x1y1x2y2=True):
 
     iou = inter_area / (b1_area + b2_area - inter_area + 1e-16)
 
+
     return iou
+
+
 
 
 def non_max_suppression(prediction, conf_thres=0.5, nms_thres=0.4):
@@ -301,6 +317,7 @@ def YOLOLabelSingleParticleToMultiple(YOLOLabels,overlap_thres=0.5,xdim=128,ydim
                 label2 = labelCombo[1,:]
                 overlap = bbox_iou(torch.from_numpy(label1[1:]),torch.from_numpy(label2[1:]), x1y1x2y2=False)
                 
+                
                 if overlap > overlap_thres:
                    newLabel = mergeLabels(label1.reshape(1,5),label2.reshape(1,5),xdim,ydim).reshape(1,5)
 
@@ -309,9 +326,11 @@ def YOLOLabelSingleParticleToMultiple(YOLOLabels,overlap_thres=0.5,xdim=128,ydim
                    YOLOLabels = np.append(YOLOLabels,newLabel,0)
                    if len(YOLOLabels > 1):
                        continueFlag = True
+                       
                    else: 
                        continueFlag = False
-                       break
+                       
+                   break
                    
         return YOLOLabels
             

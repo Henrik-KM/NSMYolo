@@ -455,3 +455,52 @@ for i in range(0,2):
     plt.figure()
     plt.imshow(im[0,:,:,1],aspect='auto')
     YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.5,trackMultiParticle=True)
+   
+#%%
+plt.close('all')
+import matplotlib.patches as pch
+for i in range(0,1):
+    im = create_batch(1,8192,128*4,nump)
+    im = skimage.measure.block_reduce(im,(1,64,1,1),np.mean)
+    plt.figure()
+    plt.imshow(im[0,:,:,1],aspect='auto')
+    YOLOLabels = ConvertTrajToMultiBoundingBoxes(im,length=128,times=128,treshold=0.05,trackMultiParticle=True)
+    
+    flipim = np.flip(im,axis=(1))[0,:,:,:]
+    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,128,128)
+    temp = 127-flipLabels[:,4] 
+    flipLabels[:,4] = 127-flipLabels[:,2] 
+    flipLabels[:,2] = temp
+    plt.figure()
+    ax = plt.gca()
+    plt.imshow(flipim[:,:,1],aspect='auto')
+    for _,x1,y1,x2,y2 in flipLabels:
+        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+        
+    flipim = np.flip(im,axis=(2))[0,:,:,:]
+    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,128,128)
+    temp = 127-flipLabels[:,3] 
+    flipLabels[:,3] = 127-flipLabels[:,1] 
+    flipLabels[:,1] = temp    
+    plt.figure()
+    ax = plt.gca()
+    plt.imshow(flipim[:,:,1],aspect='auto')
+    for _,x1,y1,x2,y2 in flipLabels:
+        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+        
+    flipim = np.flip(im,axis=(1,2))[0,:,:,:]
+    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,128,128)
+    temp = 127-flipLabels[:,4] 
+    flipLabels[:,4] = 127-flipLabels[:,2] 
+    flipLabels[:,2] = temp    
+    temp = 127-flipLabels[:,3] 
+    flipLabels[:,3] = 127-flipLabels[:,1] 
+    flipLabels[:,1] = temp    
+    plt.figure()
+    ax = plt.gca()
+    plt.imshow(flipim[:,:,1],aspect='auto')
+    for _,x1,y1,x2,y2 in flipLabels:
+        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+
+    # self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
+    # self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
