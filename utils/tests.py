@@ -501,6 +501,48 @@ for i in range(0,1):
     plt.imshow(flipim[:,:,1],aspect='auto')
     for _,x1,y1,x2,y2 in flipLabels:
         ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))
+        
+    flipim = np.rot90(im,axes=(1,2),k=1)[0,:,:,:]
+    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,128,128)
+    
+    temp = np.copy(flipLabels[:,2]) 
+    flipLabels[:,2] = 127-flipLabels[:,1]
+    flipLabels[:,1] = temp
+    
+    temp = np.copy(flipLabels[:,4]) 
+    flipLabels[:,4] = 127-flipLabels[:,3]
+    flipLabels[:,3] = temp
+    
+    plt.figure()
+    ax = plt.gca()
+    plt.imshow(flipim[:,:,1],aspect='auto')
+    temp = np.copy(flipLabels[:,2])
+    flipLabels[:,2] = flipLabels[:,4]
+    flipLabels[:,4] = temp
+    #flipLabels[:,2], flipLabels[:,4] = flipLabels[:,4], flipLabels[:,2]
+    for _,x1,y1,x2,y2 in flipLabels:
+        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))    
+        
+    flipim = np.rot90(im,axes=(1,2),k=3)[0,:,:,:]
+    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,128,128)
+    
+    temp = np.copy(flipLabels[:,2]) 
+    flipLabels[:,2] = flipLabels[:,1]
+    flipLabels[:,1] = 127-temp
+    
+    temp = np.copy(flipLabels[:,4]) 
+    flipLabels[:,4] = flipLabels[:,3]
+    flipLabels[:,3] = 127-temp
+    
+    plt.figure()
+    ax = plt.gca()
+    plt.imshow(flipim[:,:,1],aspect='auto')
+    temp = np.copy(flipLabels[:,1])
+    flipLabels[:,1] = flipLabels[:,3]
+    flipLabels[:,3] = temp
+    for _,x1,y1,x2,y2 in flipLabels:
+        ax.add_patch(pch.Rectangle((x1,y1),x2-x1,y2-y1,fill=False,zorder=2,edgecolor='white'))    
+
 
     # self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
     # self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]

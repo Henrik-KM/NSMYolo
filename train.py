@@ -1,6 +1,6 @@
 from __future__ import division
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_ckpt_19.pth --epochs 29')
-# runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=32 --pretrained_weights weights/yolov3_Multi_ckpt_96_8192.pth --epochs 4 --total_data 5000 --checkpoint_interval 1 --img_size 128 --n_cpu 8')
+# 128Multi runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=16 --pretrained_weights weights/yolov3_Multi_ckpt_3_128.pth --epochs 4 --total_data 50000 --checkpoint_interval 1 --img_size 128 --n_cpu 0')
 # runfile('C:/Users/ccx55/OneDrive/Documents/GitHub/NSMYOLO/train.py',args=' --batch_size=1 --epochs 35')
 from models import *
 from utils.logger import *
@@ -189,7 +189,6 @@ if __name__ == "__main__":
                 
             targets = Variable(targets.to(device), requires_grad=False)
 
-            
             loss, outputs = model(imgs, targets)    
             loss.backward()
 

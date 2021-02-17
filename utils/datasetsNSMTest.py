@@ -418,37 +418,81 @@ class ListDataset(Dataset):
                 self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
                 self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
                 
-                self.targetSave = np.zeros((3,np.size(YOLOLabels,0),5))   
-                
-                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
-                temp = length-1-flipLabels[:,4] 
-                flipLabels[:,4] = length-1-flipLabels[:,2] 
-                flipLabels[:,2] = temp
-                
-                self.targetSave[0,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
-                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
-                temp = times-1-flipLabels[:,3] 
-                flipLabels[:,3] = times-1-flipLabels[:,1] 
-                flipLabels[:,1] = temp 
-                self.targetSave[1,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
-                
-                flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
-                temp = length-1-flipLabels[:,4] 
-                flipLabels[:,4] = length-1-flipLabels[:,2] 
-                flipLabels[:,2] = temp    
-                temp = times-1-flipLabels[:,3] 
-                flipLabels[:,3] = times-1-flipLabels[:,1] 
-                flipLabels[:,1] = temp    
-                self.targetSave[2,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
-
-
+                self.targetSave = np.zeros((3,np.size(YOLOLabels,0),5))  
+                if self.img_size==128:
+                    self.targetSave = np.zeros((5,np.size(YOLOLabels,0),5))  
+                    
+                if not np.isnan(np.array(YOLOLabels,dtype=float)).any():
                
-                
-                
-                if self.img_size == 128:
-                    self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=1),0) #Rotate by 90, 270 degrees, maybe  ok for square imgs?
-                    self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=3),0)
-      
+                    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                    temp = length-1-flipLabels[:,4] 
+                    flipLabels[:,4] = length-1-flipLabels[:,2] 
+                    flipLabels[:,2] = temp
+                    
+                    self.targetSave[0,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                    temp = times-1-flipLabels[:,3] 
+                    flipLabels[:,3] = times-1-flipLabels[:,1] 
+                    flipLabels[:,1] = temp 
+                    self.targetSave[1,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                    
+                    flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                    temp = length-1-flipLabels[:,4] 
+                    flipLabels[:,4] = length-1-flipLabels[:,2] 
+                    flipLabels[:,2] = temp    
+                    temp = times-1-flipLabels[:,3] 
+                    flipLabels[:,3] = times-1-flipLabels[:,1] 
+                    flipLabels[:,1] = temp    
+                    self.targetSave[2,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                                                           
+                    if self.img_size == 128:
+                        self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=1),0) #Rotate by 90, 270 degrees, maybe  ok for square imgs?
+                        self.imSave = np.append(self.imSave,np.rot90(im,axes=(1,2),k=3),0)
+                        
+                        flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                        
+                        temp = np.copy(flipLabels[:,2]) 
+                        flipLabels[:,2] = times-1-flipLabels[:,1]
+                        flipLabels[:,1] = temp
+                        
+                        temp = np.copy(flipLabels[:,4]) 
+                        flipLabels[:,4] = length-1-flipLabels[:,3]
+                        flipLabels[:,3] = temp
+                        
+
+
+                        # temp = np.copy(flipLabels[:,2])
+                        # flipLabels[:,2] = flipLabels[:,4]
+                        # flipLabels[:,4] = temp
+                        
+                        temp = np.copy(flipLabels[:,2])
+                        flipLabels[:,2] = np.minimum(flipLabels[:,4],temp)
+                        flipLabels[:,4] = np.maximum(flipLabels[:,4],temp)
+                        temp = np.copy(flipLabels[:,1])
+                        flipLabels[:,1] = np.minimum(flipLabels[:,3],temp)
+                        flipLabels[:,3] = np.maximum(flipLabels[:,3],temp)
+                        
+                        self.targetSave[3,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                        
+                        flipLabels = ConvertYOLOLabelsToCoord(YOLOLabels,times,length)
+                        temp = np.copy(flipLabels[:,2]) 
+                        flipLabels[:,2] = flipLabels[:,1]
+                        flipLabels[:,1] = times-1-temp
+                        
+                        temp = np.copy(flipLabels[:,4]) 
+                        flipLabels[:,4] = flipLabels[:,3]
+                        flipLabels[:,3] = times-1-temp
+                        
+                        temp = np.copy(flipLabels[:,2])
+                        flipLabels[:,2] = np.minimum(flipLabels[:,4],temp)
+                        flipLabels[:,4] = np.maximum(flipLabels[:,4],temp)
+                        temp = np.copy(flipLabels[:,1])
+                        flipLabels[:,1] = np.minimum(flipLabels[:,3],temp)
+                        flipLabels[:,3] = np.maximum(flipLabels[:,3],temp)
+                        self.targetSave[4,:,:] = ConvertCoordToYOLOLabels(flipLabels,times,length)
+                        
+                else: 
+                    self.targetSave =np.reshape([None]*np.size(self.targetSave,0)*5,(np.size(self.targetSave,0),1,5))
         else:
             im = np.expand_dims(self.imSave[0,:,:,:],0)
             self.imSave = self.imSave[1:,:,:,:]
