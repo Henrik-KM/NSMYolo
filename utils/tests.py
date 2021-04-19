@@ -43,6 +43,37 @@ bgnoiseCval=0.03+.02*np.random.rand()
 bgnoise=.08+.04*np.random.rand()
 bigx0=.1*np.random.randn()
 
+# def generate_trajectories(image,Int,Ds,st,nump):
+#     vel = 0
+#     length=image.shape[1]
+#     times=image.shape[0]
+#     x=np.linspace(-1,1,length)
+#     t=np.linspace(-1,1,times)
+#     X, Y=np.meshgrid(t,x)
+#     f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
+    
+#     for p_nbr in range(nump):
+#         I = Int()
+#         D = Ds()
+#         s = st()
+        
+#         # Generate trajectory 
+#         x0=0
+#         x0+=np.cumsum(vel+D*np.random.randn(times))
+#         v1=np.transpose(I*f2(1,x0,s,0,Y))
+        
+#         # Save trajectory with intensity in first image
+#         image[...,0] *= (1-v1)##(1-v1)
+
+#         # Add trajectory to full segmentation image image
+#         particle_trajectory = np.transpose(f2(1,x0,0.05,0,Y))
+#         image[...,1] += particle_trajectory 
+
+#         # Save single trajectory as additional image
+#         image[...,-p_nbr-1] = particle_trajectory  
+        
+#     return image
+
 def generate_trajectories(image,Int,Ds,st,nump):
     vel = 0
     length=image.shape[1]
@@ -52,14 +83,24 @@ def generate_trajectories(image,Int,Ds,st,nump):
     X, Y=np.meshgrid(t,x)
     f2=lambda a,x0,s,b,x: a*np.exp(-(x-x0)**2/s**2)+b
     
+    
+    
     for p_nbr in range(nump):
         I = Int()
         D = Ds()
         s = st()
         
         # Generate trajectory 
-        x0=0
-        x0+=np.cumsum(vel+D*np.random.randn(times))
+        x0=-1+2*np.random.rand()
+        if np.random.rand()<1:
+            unstuckLength = np.random.randint(times-times/16)
+            x0+=np.cumsum(vel+D*np.random.randn(unstuckLength))               
+            stuckLength = np.random.randint(times-unstuckLength)
+            diffStuckConstant = (np.random.rand(stuckLength)-0.5)*0.002
+            x0 = np.append(x0,x0[-1]+np.cumsum(diffStuckConstant))                      
+            x0 = np.append(x0,x0[-1]+np.cumsum(+D*np.random.randn(times-(stuckLength+unstuckLength))))          
+        else: 
+            x0+=np.cumsum(vel+D*np.random.randn(times))
         v1=np.transpose(I*f2(1,x0,s,0,Y))
         
         # Save trajectory with intensity in first image
@@ -210,38 +251,73 @@ for j in range(0,batchSize):
 #       print("Label generation failed. Continuing..")
 
 #%%
-#Test unit predictive power
+#Test unet predictive power
 plt.close('all')
 nump = lambda: 3
+#import tensorflow as tf
 import tensorflow as tf
+config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+config.gpu_options.allow_growth = True
+session = tf.compat.v1.Session(config=config)
 for i in range(0,2):
-    unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
-    
-    im = create_batch(1,2048,2048,nump)
-    pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
-    plt.figure()
-    plt.imshow(im[0,:,:,0].T,aspect='auto')
-    plt.xlabel('t')
-    plt.title("Processed Image")
-    plt.xlabel('x')
-    plt.figure()
-    plt.imshow(im[0,:,:,1].T,aspect='auto')
-    plt.xlabel('t')
-    plt.title("True Trajectory")
-    plt.xlabel('x')
-    pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
-    plt.figure()
-    plt.imshow(pred[0,:,:,0].T,aspect='auto')
-    plt.xlabel('t')
-    plt.title("Predicted Trajectory")
-    plt.xlabel('x')
     unet = tf.keras.models.load_model('../../input/network-weights/unet-14-dec-1700.h5',compile=False)
+    
+    times = 2048
+    #im = create_batch(1,2048,512,nump)
+    
     pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
     plt.figure()
-    plt.imshow(pred[0,:,:,0].T,aspect='auto')
-    plt.xlabel('t')
-    plt.title("Predicted Trajectory")
-    plt.xlabel('x')
+    plt.imshow(im[0,:,:,0],aspect='auto')
+    plt.ylabel('Time (s)')
+    xticks = plt.xticks()[0]*0.0295*4
+    xticksStr = ['']*len(xticks)
+    yticks = plt.yticks()[0]*0.00487
+    yticksStr = ['']*len(yticks)
+    for xtick in range(0,len(xticks)):
+        xticksStr[xtick] = str(round(xticks[xtick],1)) 
+    for ytick in range(0,len(yticks)):
+        yticksStr[ytick] = str(round(yticks[ytick],1)) 
+        
+    plt.xticks(plt.xticks()[0],xticksStr)
+    plt.xlim(0,127)
+    plt.yticks(plt.yticks()[0],yticksStr)
+    plt.ylim(0,2048)
+    plt.title("Processed Kymograph",fontsize=26)
+    plt.xlabel('Position (\u03BCm)',fontsize=26)
+    plt.colorbar()
+    plt.clim(-1, 1);
+    plt.figure()
+    plt.imshow(im[0,:,:,1],aspect='auto')
+    plt.ylabel('Time (s)',fontsize=26)
+    plt.title("True Trajectory",fontsize=26)
+    plt.xlabel('Position (\u03BCm)',fontsize=26)
+    plt.xticks(plt.xticks()[0],xticksStr)
+    plt.xlim(0,127)
+    plt.yticks(plt.yticks()[0],yticksStr)
+    plt.ylim(0,2048)
+    plt.colorbar()
+    plt.clim(0, 1);
+    pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
+    plt.figure()
+    plt.imshow(pred[0,:,:,0],aspect='auto')
+    plt.ylabel('Time (s)',fontsize=26)
+    plt.title("Predicted Trajectory",fontsize=26)
+    plt.xlabel('Position (\u03BCm)',fontsize=26)
+    plt.xticks(plt.xticks()[0],xticksStr)
+    plt.xlim(0,127)
+    plt.yticks(plt.yticks()[0],yticksStr)
+    plt.ylim(0,2048)
+    plt.colorbar()
+    plt.clim(0, 1);
+    
+    ConvertTrajToMultiBoundingBoxes(im,length=128,times=times,treshold=0.5,trackMultiParticle=True)
+    
+    # pred = unet.predict(np.expand_dims(im[...,0],axis=-1))
+    # plt.figure()
+    # plt.imshow(pred[0,:,:,0].T,aspect='auto')
+    # plt.xlabel('t')
+    # plt.title("Predicted Trajectory")
+    # plt.xlabel('x')
     
 #%%
 import tensorflow as tf
@@ -546,3 +622,88 @@ for i in range(0,1):
 
     # self.imSave[1,:,:,:] = np.flip(im,axis=(2))[0,:,:,:]
     # self.imSave[2,:,:,:] = np.flip(im,axis=(1,2))[0,:,:,:]
+    
+#%% Generate noise from exp. data
+plt.close('all')
+baseNoise1 = np.load('ferritin_highNoise.npy')
+baseNoise2 = np.load('ferritin_lowNoise.npy')
+baseNoise3 = np.load('ferritin_lowNoise_50_11.npy')
+
+baseNoise = np.append(baseNoise1,baseNoise2,0)
+baseNoise = np.append(baseNoise,baseNoise3,0)
+
+im= create_batch(1,128,128*4,lambda:3)
+im = np.expand_dims(im[:,:,:,1],-1)
+startIndex = np.random.randint(np.size(baseNoise,0)-128)
+plt.figure()
+plt.imshow(baseNoise[startIndex:startIndex+128,:],aspect='auto')
+
+im = im + np.expand_dims(baseNoise[startIndex:startIndex+128,:],(0,-1))
+plt.figure()
+plt.imshow(im[0,:,:,0],aspect='auto')
+
+#%% Test stuck particles
+
+im = create_batch(1,512,128,lambda:3)
+#%%
+plt.close('all')
+plt.imshow(im[0,:,:,1],aspect='auto')
+segment = np.copy(im[0,:,:,1])
+
+ono = np.ones(im[0,:,:,1].shape)
+conv_im = convolve2d(im[0,:,:,1],np.ones((1,20)),mode="same")
+
+plt.figure()
+plt.imshow(conv_im,aspect='auto')
+
+#segment[segment<0.1] = 0
+
+#diffTest = np.diff(segment,axis=0)
+#diffTest[diffTest<0] = 0
+# plt.figure()
+# plt.imshow(diffTest,aspect='auto')
+# plt.figure()
+# diffTest2 = segment-diffTest
+# plt.imshow(diffTest2,aspect='auto')
+#%%
+import skimage
+from scipy.signal import convolve2d
+import scipy
+im = create_batch(1,512,128,lambda:1)
+segment = np.copy(im[0,:,:,1])
+plt.close('all')
+M = 10
+original_img = segment
+for i in range(0,5):
+    
+    plt.imshow(original_img,aspect='auto')
+    conv_img = original_img - convolve2d(original_img,np.ones((M,1))/M,mode='same')
+    plt.figure()
+    plt.imshow(conv_img,aspect='auto')
+    
+    img = original_img * (1-conv_img)
+    img /= np.max(img)
+    img[img<0.99] = 0
+    img[img>0] = 1
+    
+    identifiedStuckTraj = np.sum(img,0)
+    img[:,identifiedStuckTraj<2] = 0
+    
+    plt.figure()
+    #plt.title(filename + ', j: ' + str(j)+ ' counter: ' + str(counter))
+    plt.imshow(img,aspect='auto')
+    plt.show()
+    
+    plt.figure(figsize=(14,6))
+    binary_img = scipy.ndimage.morphology.binary_dilation(img,structure=np.ones((M,1)))
+    plt.imshow(binary_img,aspect='auto')
+    plt.show()
+    
+    idcs = np.sum(binary_img,axis=1)==0
+    cut_img = original_img[idcs]
+    plt.imshow(cut_img,aspect='auto')
+    plt.title('Unstuck particle')
+    plt.show()
+    original_img = np.copy(cut_img)
+#np.savetxt('unstuck_particle_segmentation.csv',cut_img,delimiter=',')
+

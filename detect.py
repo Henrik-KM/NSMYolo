@@ -24,13 +24,18 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from matplotlib.ticker import NullLocator
 
-import tensorflow as tf
-config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
-config.gpu_options.allow_growth = True
-session = tf.compat.v1.Session(config=config)
-# unet = tf.keras.models.load_model('../../input/network-weights/unet-1-dec-1415.h5',compile=False)
+
+train_unet = True
 unet=None
-trackMultiParticle = False
+
+if train_unet:
+    import tensorflow as tf
+    config = tf.compat.v1.ConfigProto() #Use to fix OOM problems with unet
+    config.gpu_options.allow_growth = True
+    session = tf.compat.v1.Session(config=config)
+    unet = tf.keras.models.load_model('../../input/network-weights/unet-14-dec-1700.h5',compile=False)
+
+trackMultiParticle = True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -49,14 +54,13 @@ if __name__ == "__main__":
     print(opt)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    if "Multi" in opt.weights_path:
-        trackMultiParticle = True
 
     os.makedirs("output", exist_ok=True)
 
     # Set up model
     times = opt.img_size
     length = opt.img_size
+    
     if opt.img_size==8192:
         model = Darknet(opt.model_def, img_size=128).to(device)
         times = 128
@@ -75,7 +79,7 @@ if __name__ == "__main__":
             model.load_state_dict(torch.load(opt.weights_path,map_location=torch.device('cpu')))
 
     model.eval()  # Set in evaluation mode
-    dataset = ListDataset("data/custom/train.txt",img_size=opt.img_size, augment=False, totalData = 6,unet = None,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
+    dataset = ListDataset("train",img_size=opt.img_size, augment=False, totalData = 6,unet = unet,trackMultiParticle=trackMultiParticle)#,normalized_labels=True)
     dataloader = torch.utils.data.DataLoader(
         dataset,
         batch_size=opt.batch_size,
@@ -171,8 +175,9 @@ if __name__ == "__main__":
             box_w = x2 - x1
             box_h = y2 - y1
             ax = plt.gca()
-            bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=2, edgecolor='white', facecolor="none")
+            bbox = patches.Rectangle((x1, y1), box_w, box_h, linewidth=0.5, edgecolor='white', facecolor="none")
             ax.add_patch(bbox)
+            
          # Save generated image with detections
         # plt.axis("off")
         # plt.gca().xaxis.set_major_locator(NullLocator())
