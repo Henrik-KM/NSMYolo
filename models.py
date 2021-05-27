@@ -143,9 +143,9 @@ class YOLOLayer(nn.Module):
         self.img_dim = img_dim
         num_samples = x.size(0)
         grid_size = x.size(2)
-        print(x.shape)
-        print(self.num_classes)
-        print(grid_size)
+        #print(x.shape)
+        #print(self.num_classes)
+        #print(grid_size)
         prediction = (
             x.view(num_samples, self.num_anchors, self.num_classes + 5, grid_size, grid_size)
             .permute(0, 1, 3, 4, 2)
@@ -161,12 +161,12 @@ class YOLOLayer(nn.Module):
         pred_cls = torch.sigmoid(prediction[..., 5:])  # Cls pred.
 
         # If grid size does not match current we compute new offsets
-        print("Checking grid")
+       # print("Checking grid")
         if grid_size != self.grid_size:
             t1 = time.time()
             self.compute_grid_offsets(grid_size, cuda=x.is_cuda)
             t2 = time.time()
-            print("Time used for compute grid diff: ", t2-t1)
+           # print("Time used for compute grid diff: ", t2-t1)
 
         # Add offset and scale with anchors
         pred_boxes = FloatTensor(prediction[..., :4].shape)

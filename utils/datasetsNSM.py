@@ -1,9 +1,7 @@
-import glob
 import random
 import os
 import sys
 import numpy as np
-from PIL import Image
 import torch
 import torch.nn.functional as F
 import tensorflow as tf
@@ -255,26 +253,6 @@ def random_resize(images, min_size=288, max_size=448):
     new_size = random.sample(list(range(min_size, max_size + 1, 32)), 1)[0]
     images = F.interpolate(images, size=new_size, mode="nearest")
     return images
-
-
-class ImageFolder(Dataset):
-    def __init__(self, folder_path, img_size=416):
-        self.files = sorted(glob.glob("%s/*.*" % folder_path))
-        self.img_size = img_size
-
-    def __getitem__(self, index):
-        img_path = self.files[index % len(self.files)]
-        # Extract image as PyTorch tensor
-        img = transforms.ToTensor()(Image.open(img_path))
-        # Pad to square resolution
-        img, _ = pad_to_square(img, 0)
-        # Resize
-        img = resize(img, self.img_size)
-
-        return img_path, img
-
-    def __len__(self):
-        return len(self.files)
 
 
 class ListDataset(Dataset):
